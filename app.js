@@ -2773,7 +2773,7 @@ function fitSetKey(key, k, v) {
   save();
   render();
   document.querySelectorAll("details[data-fit-key]").forEach((el) => {
-    if (el.dataset.fitKey === key) el.open = true;
+    if (el.dataset.fitKey === key) {el.open = true; if(k==="counts") {const d=el.querySelector("details");if(d)d.open=true;}}
   });
 }
 
@@ -2795,6 +2795,25 @@ function equipmentModes(eq) {
   const beer = ["1d", "2d", "yes"].includes(beerDoors) ? "yes" : beerDoors;
   return { non, beerDoors, flashHO, type, beer };
 }
+function fitEquipmentCount(key,k,v){
+ const eq=s.fitEquipment?.[key]||{};
+ const counts={...(eq.counts||{}),[k]:Math.max(0,Math.min(30,Math.floor(Number(v)||0)))};
+ fitSetKey(key,"counts",counts);
+}
+function fitCountsUI(key,eq){
+ const counts=eq.counts||{};
+ return '<details><summary>Количество холодильников и состояние</summary><small>Пусто — не проверено. Указывайте только рабочее оборудование, ремонт отдельно.</small>'+[["beer1","Пиво 1Д"],["beer2","Пиво 2Д"],["pepsi1","Pepsi 1Д"],["pepsi2","Pepsi 2Д"],["flex","Flex 400"],["lipton","Lipton"],["flash","Flash"],["repair","В ремонте"]].map(([k,n])=>'<label>'+n+'</label><input type="number" min="0" max="30" placeholder="Не проверено" value="'+(counts[k]??"")+'" onchange="fitEquipmentCount('+esc(JSON.stringify(key))+',&quot;'+k+'&quot;,this.value)">').join("")+'<small>Количество — инвентаризация. Для правил FIT подтвердите типы в списках выше.</small></details>';
+}
+function fitOrderHint(st){
+ if(!st||st.qty<=0)return "";
+ const m=st.name.match(/(\d+[.,]\d+|\d+)\s*(?:л\s*)?[*×xх]\s*\d+/i);
+ if(!m)return "";
+ const vol=Number(m[1].replace(",","."));
+ if(!(vol>0&&vol<=5))return "";
+ const qty=Math.ceil(1/vol);
+ return st.qty>=qty?" · пробный заказ "+qty+" шт. (гипотеза 1 л, не гарантия FIT)":" · недостаточно для пробного заказа";
+}
+
 function fitAdvice(r, t, fm, i) {
   let key = fitKey(r, t),
     eq =
@@ -2863,7 +2882,7 @@ function fitAdvice(r, t, fm, i) {
           ["none", "Нет"],
         ],
         flashHO,
-      );
+      ) + fitCountsUI(key,eq);
   if (!valid || !t?.sku || !fm?.criteria)
     return (
       h +
@@ -2910,8 +2929,8 @@ function fitAdvice(r, t, fm, i) {
                       esc(st.name) +
                       " — " +
                       fmt(st.qty) +
-                      " шт." +
-                      (st.qty > 0 ? " · в наличии" : " · нет в наличии"),
+                      " шт. · "+Math.floor(st.qty/st.pack)+" уп. + "+fmt(st.qty%st.pack)+" шт." +
+                      (st.qty > 0 ? " · в наличии" : " · нет в наличии") + (g.key==="flash"?fitOrderHint(st):""),
                   )
                   .join("<br>")
               : "Остаток неизвестен") +
@@ -2921,6 +2940,8 @@ function fitAdvice(r, t, fm, i) {
       (items.length ? "" : "<small>Проверить выкладку, фейсы и фото.</small>") +
       "</div>";
   }
+  if (!type || !beer)
+    h += '<p><small>Общая проверка: наличие товара, ценники, сроки годности. Неизвестное ХО не считается отсутствующим.</small></p>';
   if (!type || !beer)
     h +=
       "<p><small>Выберите тип ХО для рекомендаций соответствующей категории.</small></p>";

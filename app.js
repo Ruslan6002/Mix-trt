@@ -2607,7 +2607,7 @@ function fitRules(type, beer) {
     item("Flash Ultra 0,25 л", /flash.*ultra.*0[.,]25/i),
     item(
       "Два дополнительных вкуса Flash",
-      /flash.*(?:bubble|exotic|mojito|pomegranate)/i,
+      /flash.*(?:bubble|exotic|mojito|pomegranate|morning cakes)/i,
       2,
     ),
   ];
@@ -2747,6 +2747,8 @@ function fitMissing(group, seen, known, stock) {
         label: item.label,
         known: names.length > 0,
         stocks: candidates.slice(0, 5),
+        need,
+        choices: item.count>1 ? candidates.filter(r=>r.qty>0&&!seen.some(h=>skuKey(h)===skuKey(r.name))) : [],
       },
     ];
   });
@@ -2988,6 +2990,14 @@ function fitAdvice(r, t, fm, i) {
  const alternative=/региональн|на выбор|дополнительных/.test(x.label);
  const name=x.name.replace(/ · не хватает (\d+) SKU/," · проверить $1 SKU");
  if(value==="yes"){present.push({sku,name});return "";}
+ if(value==="no"&&g.key==="flash"&&x.label.includes("дополнительных")){
+ const flavors=new Map();
+ for(const st of x.choices){const flavor=st.name.match(/bubble gum|exotic|mojito strawberry|pomegranate|morning cakes/i)?.[0].toLowerCase();if(flavor&&!flavors.has(flavor))flavors.set(flavor,st);}
+ const picks=[...flavors.values()].slice(0,x.need);
+ if(picks.length)for(const st of picks)order.push({sku,name:st.name,brand:"Flash",faces:"1 фейс · проверить наличие в точке"});
+ if(picks.length<x.need)blocked.push({sku,name:"Flash: недостаточно подходящих вкусов на складе"});
+ return "";
+ }
  if(value==="no"){(available&&!alternative?order:blocked).push({sku,name:available&&!alternative?x.label:name+(alternative?" · уточнить вкус":available?"":x.stocks.length?" · нулевой остаток":" · не найдено в отчёте"),brand:fitOrderBrand(x.label),faces:fitFacing(g,x.label,type,beerDoors)});return "";}
  return '<div style="padding:10px 0;border-bottom:1px solid #64748b44"><b>'+esc(name)+'</b>'+(fitFacing(g,x.label,type,beerDoors)?' <small>· '+esc(fitFacing(g,x.label,type,beerDoors))+'</small>':'')+fitCheckButtons(key,day,sku)+'</div>';
  }).join("")+

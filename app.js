@@ -2861,8 +2861,9 @@ function fitCheckedRow(key,day,x){
 }
 function fitOrderList(key,day,order){
  const groups={};
- for(const x of order){const brand=x.brand; (groups[brand]??=[]).push(x);}
- return Object.entries(groups).sort(([a],[b])=>a.localeCompare(b,"ru")).map(([brand,rows])=>'<div style="margin:12px 0"><div style="font-weight:700;font-size:13px;opacity:.75">'+esc(brand)+'</div>'+rows.map(x=>'<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #64748b44"><div style="flex:1"><b>'+esc(x.name)+'</b>'+(x.faces?'<br><small>'+esc(x.faces)+'</small>':'')+'</div><button type="button" class="secondary" aria-label="Вернуть в проверку" style="min-width:44px;min-height:44px" onclick="fitCheck('+[key,day,x.sku,""].map(v=>esc(JSON.stringify(v))).join(",")+')">↶</button></div>').join("")+'</div>').join("");
+ for(const x of order)(groups[x.brand]??=[]).push(x);
+ const short=x=>x.name.replace(/^(?:Пиво|Напиток|Пивной напиток|Чай черный|Чай зеленый)\s+/i,"").replace(/^(?:Seth&Riley['’]?s\s+)?(?:Flash(?: Up)?(?: Energy)?|Garage|Somersby|Lipton|Липтон|Pepsi|Mirinda|7UP|Holsten|Хольстен|Carlsberg|Карлсберг|Жатецкий Гусь|Большая Кружка|1664 Blanc)\s*/i,"").replace(/\s*т\/у\s*/gi," ").replace(/\s*\*\s*\d+.*$/," л").replace(/\s+/g," ").trim()||x.name;
+ return Object.entries(groups).sort(([a],[b])=>a.localeCompare(b,"ru")).map(([brand,rows])=>'<div style="margin:10px 0"><div style="font-weight:800;font-size:15px;padding:5px 0">'+esc(brand)+'</div>'+rows.map(x=>'<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #64748b33"><span style="flex:1;font-size:16px;line-height:1.3">'+esc(short(x))+'</span><button type="button" class="secondary" aria-label="Вернуть в проверку" style="min-width:36px;min-height:36px;padding:4px 8px" onclick="fitCheck('+[key,day,x.sku,""].map(v=>esc(JSON.stringify(v))).join(",")+')">↶</button></div>').join("")+'</div>').join("");
 }
 function fitOrderBrand(name){
  return [/большая кружка/i,/жатецкий|zatecky/i,/carlsberg|карлсберг/i,/holsten|хольстен/i,/garage/i,/somersby/i,/1664|кроненбург/i,/pepsi/i,/7up/i,/mirinda/i,/lipton/i,/flash/i].map((re,i)=>re.test(name)?["Большая Кружка","Жатецкий Гусь","Carlsberg","Holsten","Garage","Somersby","1664 Blanc","Pepsi","7UP","Mirinda","Lipton","Flash"][i]:null).find(Boolean)||"Другие";

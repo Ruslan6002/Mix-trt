@@ -2906,8 +2906,8 @@ function fitAdvice(r, t, fm, i) {
     rules = fitRules(type, beer);
   h +=
     "<small>История продаж ≠ наличие на полке. Баллы — вес группы, не гарантированный прирост. Для Focus уточните региональную матрицу и число дверей ХО.</small>";
-  if(!fm?.criteria) h+="<p>Нет подробных оценок критериев. Ниже контрольные рекомендации, не подтвержденные нарушения FIT.</p>";
-  if(!t?.sku) h+="<p>Нет истории SKU на Sheet4. Ниже контрольный ассортимент по оборудованию, отсутствие товара не подтверждено.</p>";
+  if(!fm?.criteria) h+="<p>Подробные оценки недоступны. Список для проверки.</p>";
+  if(!t?.sku) h+="<p>Контрольный ассортимент: история SKU недоступна. Проверьте наличие в магазине.</p>";
   for (let g of rules) {
     let score = fm?.criteria ? fitCriterion(fm, g) : null;
     if (score != null && score * 100 >= g.max - 0.05)
@@ -2916,22 +2916,8 @@ function fitAdvice(r, t, fm, i) {
     h +=
       '<div class="task"><b>' +
       esc(g.label) +
-      "</b><br><small>По отчёту " +
-      (score == null ? "нет оценки" : fmt(score * 100)) +
-      " п.п. / вес " +
-      g.max +
-      " п.п.</small>" +
-      items
-        .map(
-          (x) =>
-            "<div>" +
-            esc(x.name) +
-            "<br><small>" +
-            (!x.known ? "SKU не найден в ассортименте отчёта · " : "") +
-            (x.stocks.some(st=>st.qty>0) ? "В наличии" : x.stocks.length ? "Нет в наличии" : "Наличие не подтверждено") +
-            "</small></div>",
-        )
-        .join("") +
+      "</b><br><small>Вес критерия: "+g.max+"%"+(score==null?"":" · оценка: "+fmt(score*100)+" п.п.")+"</small>"+
+      items.map(x=>'<div style="padding:6px 0;display:flex;gap:8px;align-items:baseline"><span aria-hidden="true">○</span><span>'+esc(x.name.replace(/ · не хватает (\d+) SKU/," · проверить $1 SKU"))+(x.stocks.length&&!x.stocks.some(st=>st.qty>0)?' <small>· нет на складе</small>':'')+'</span></div>').join("")+
       (items.length ? "" : "<small>Проверить выкладку, фейсы и фото.</small>") +
       "</div>";
   }

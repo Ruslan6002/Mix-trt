@@ -2854,6 +2854,14 @@ function fitCheckButtons(key,day,sku){
 function fitCheckedRow(key,day,x){
  return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0"><span style="flex:1">'+esc(x.name)+'</span><button class="secondary" type="button" onclick="fitCheck('+[key,day,x.sku,""].map(v=>esc(JSON.stringify(v))).join(",")+')">Отменить</button></div>';
 }
+function fitOrderList(key,day,order){
+ const groups={};
+ for(const x of order){const brand=x.brand; (groups[brand]??=[]).push(x);}
+ return Object.entries(groups).sort(([a],[b])=>a.localeCompare(b,"ru")).map(([brand,rows])=>'<div style="margin:12px 0"><div style="font-weight:700;font-size:13px;opacity:.75">'+esc(brand)+'</div>'+rows.map(x=>'<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #64748b44"><div style="flex:1"><b>'+esc(x.name)+'</b>'+(x.faces?'<br><small>'+esc(x.faces)+'</small>':'')+'</div><button type="button" class="secondary" aria-label="Вернуть в проверку" style="min-width:44px;min-height:44px" onclick="fitCheck('+[key,day,x.sku,""].map(v=>esc(JSON.stringify(v))).join(",")+')">↶</button></div>').join("")+'</div>').join("");
+}
+function fitOrderBrand(name){
+ return [/большая кружка/i,/жатецкий|zatecky/i,/carlsberg|карлсберг/i,/holsten|хольстен/i,/garage/i,/somersby/i,/1664|кроненбург/i,/pepsi/i,/7up/i,/mirinda/i,/lipton/i,/flash/i].map((re,i)=>re.test(name)?["Большая Кружка","Жатецкий Гусь","Carlsberg","Holsten","Garage","Somersby","1664 Blanc","Pepsi","7UP","Mirinda","Lipton","Flash"][i]:null).find(Boolean)||"Другие";
+}
 function fitAdvice(r, t, fm, i) {
   let key = fitKey(r, t || fm),
     eq =
@@ -2977,7 +2985,7 @@ function fitAdvice(r, t, fm, i) {
  const alternative=/региональн|на выбор|дополнительных/.test(x.label);
  const name=x.name.replace(/ · не хватает (\d+) SKU/," · проверить $1 SKU");
  if(value==="yes"){present.push({sku,name});return "";}
- if(value==="no"){(available&&!alternative?order:blocked).push({sku,name:name+(alternative?" · уточнить вкус":available?"":" · склад: нет или неизвестно")});return "";}
+ if(value==="no"){(available&&!alternative?order:blocked).push({sku,name:available&&!alternative?x.label:name+(alternative?" · уточнить вкус":available?"":" · склад: нет или неизвестно"),brand:fitOrderBrand(x.label),faces:fitFacing(g,x.label,type,beerDoors)});return "";}
  return '<div style="padding:10px 0;border-bottom:1px solid #64748b44"><b>'+esc(name)+'</b>'+(fitFacing(g,x.label,type,beerDoors)?' <small>· '+esc(fitFacing(g,x.label,type,beerDoors))+'</small>':'')+fitCheckButtons(key,day,sku)+'</div>';
  }).join("")+
       (items.length ? "" : "<small>Проверить выкладку, фейсы и фото.</small>") +
@@ -2999,7 +3007,7 @@ function fitAdvice(r, t, fm, i) {
   if (type === "flash" || type === "pepsi" || type === "flex")
     h +=
       "<p><small>Flash: 2 Ultra + Classic + Ultra 0,25 + 2 дополнительных SKU, 6 фейсов. Для точки без ХО — 2 SKU.</small></p>";
-  return '<section><h3>Рекомендации к заказу · '+order.length+'</h3>'+(order.length?order.map(x=>fitCheckedRow(key,day,x)).join(""):'<small>Отметьте отсутствующие товары ниже.</small>')+(blocked.length?'<details><summary>Отсутствуют · требуют уточнения ('+blocked.length+')</summary>'+blocked.map(x=>fitCheckedRow(key,day,x)).join("")+'</details>':'')+(present.length?'<details><summary>Есть в точке ('+present.length+')</summary>'+present.map(x=>fitCheckedRow(key,day,x)).join("")+'</details>':'')+'</section>'+h+equipmentPanel+"</details>";
+  return '<section><h3>Рекомендации к заказу · '+order.length+'</h3>'+(order.length?fitOrderList(key,day,order):'<small>Отметьте отсутствующие товары ниже.</small>')+(blocked.length?'<details><summary>Отсутствуют · требуют уточнения ('+blocked.length+')</summary>'+blocked.map(x=>fitCheckedRow(key,day,x)).join("")+'</details>':'')+(present.length?'<details><summary>Есть в точке ('+present.length+')</summary>'+present.map(x=>fitCheckedRow(key,day,x)).join("")+'</details>':'')+'</section>'+h+equipmentPanel+"</details>";
 }
 function promoUI() {
   return '<section><h3>Калькулятор акций</h3><label>Цена за штуку</label><input id="prPrice" type="number" min="0" value="0" oninput="promoCalc()"><label>Оплачиваемые штуки</label><input id="prQty" type="number" min="0" value="24" oninput="promoCalc()"><label>Акция</label><select id="prRule" onchange="promoCalc()"><option value="4">4+1</option><option value="6">6+1</option><option value="0">Без акции</option></select><label>Объём единицы, л</label><input id="prLit" type="number" min="0" step=".01" value=".43" oninput="promoCalc()"><div id="prResult">Введите цену</div></section>';

@@ -263,12 +263,12 @@ function render() {
     setTimeout(listDocs, 0);
   } else if (tab === 3) {
     h =
-      routeUI() +
+      routeUI() + (visitCurrent() ? "" :
       "<section><h3>Клиентская база · " +
       s.clients.length +
       ' ТТ</h3><label>Импорт списка (название; адрес; ИП)</label><input type="file" id="clientfile" accept=".csv,.txt"><button onclick="importClients()">Импортировать</button><input id="clientsearch" placeholder="Поиск точки" oninput="filterClients(this.value)"><label>Название</label><input id="a"><label>Адрес / ИП</label><input id="b"><button onclick="addRow(\'clients\')">Добавить</button></section><section id="clientlist">' +
       clientRows("") +
-      "</section>";
+      "</section>");
   } else {
     let [key, title, a, b] = {
       2: ["sales", "Продажа", "Торговая точка", "Объём, л"],

@@ -1820,6 +1820,8 @@ function routeNorm(x, keep = false) {
   return t.replace(/cарлык/g, "сарлык").replace(/\s+/g, "");
 }
 function routeMatch(rows, name, address = "") {
+  const linked=s.fitLinks?.[routeNorm(name,true)+"|"+routeNorm(address,true)];
+  if(linked){const hits=rows.filter(t=>String(t.id)===linked);if(hits.length===1)return hits[0];}
   if (address) {
     let candidates = rows.filter((t) => routeNorm(t.name) === routeNorm(name)),
       a = routeNorm(address, true);
@@ -2814,6 +2816,14 @@ function fitOrderHint(st){
  return st.qty>=qty?" · пробный заказ "+qty+" шт. (гипотеза 1 л, не гарантия FIT)":" · недостаточно для пробного заказа";
 }
 
+function fitLink(name,address,id){
+ const old=routeKey({name,address});
+ s.fitLinks??={};
+ const key=routeNorm(name,true)+"|"+routeNorm(address,true);
+ if(id){s.fitLinks[key]=id;s.fitEquipment??={};if(s.fitEquipment[old]&&!s.fitEquipment["shop:"+id])s.fitEquipment["shop:"+id]={...s.fitEquipment[old]};}
+ else delete s.fitLinks[key];
+ save();render();
+}
 function fitAdvice(r, t, fm, i) {
   let key = fitKey(r, t),
     eq =
@@ -2883,6 +2893,10 @@ function fitAdvice(r, t, fm, i) {
         ],
         flashHO,
       ) + fitCountsUI(key,eq);
+  if (!t || !fm) {
+    const opts=(s.detail?.shops||[]).filter(x=>x.id);
+    h+='<p>Точка не сопоставлена с отчётом. Выберите её вручную:</p><select onchange="fitLink('+esc(JSON.stringify(r.name))+','+esc(JSON.stringify(r.address||""))+',this.value)"><option value="">Выберите ТТ из детализации</option>'+opts.map(x=>'<option value="'+esc(String(x.id))+'">'+esc(x.name)+'</option>').join("")+'</select>';
+  }
   if (!valid || !t?.sku || !fm?.criteria)
     return (
       h +

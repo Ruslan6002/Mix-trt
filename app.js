@@ -2928,19 +2928,7 @@ function fitAdvice(r, t, fm, i) {
             esc(x.name) +
             "<br><small>" +
             (!x.known ? "SKU не найден в ассортименте отчёта · " : "") +
-            (x.stocks.length
-              ? x.stocks
-                  .map(
-                    (st) =>
-                      "Склад: " +
-                      esc(st.name) +
-                      " — " +
-                      fmt(st.qty) +
-                      " шт. · "+Math.floor(st.qty/st.pack)+" уп. + "+fmt(st.qty%st.pack)+" шт." +
-                      (st.qty > 0 ? " · в наличии" : " · нет в наличии") + (g.key==="flash"?fitOrderHint(st):""),
-                  )
-                  .join("<br>")
-              : "Остаток неизвестен") +
+            (x.stocks.some(st=>st.qty>0) ? "В наличии" : x.stocks.length ? "Нет в наличии" : "Наличие не подтверждено") +
             "</small></div>",
         )
         .join("") +

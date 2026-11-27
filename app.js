@@ -2894,11 +2894,11 @@ function fitAdvice(r, t, fm, i) {
         ],
         flashHO,
       ) + fitCountsUI(key,eq);
-  if (!t || !fm) {
-    const opts=(s.detail?.shops||[]).filter(x=>x.id);
+  if (!t && !fm) {
+    const opts=[...new Map([...(s.detail?.shops||[]),...(s.detail?.fit||[])].filter(x=>x.id).map(x=>[String(x.id),x])).values()];
     h+='<p>Точка не сопоставлена с отчётом. Выберите её вручную:</p><select onchange="fitLink('+esc(JSON.stringify(r.name))+','+esc(JSON.stringify(r.address||""))+',this.value)"><option value="">Выберите ТТ из детализации</option>'+opts.map(x=>'<option value="'+esc(String(x.id))+'">'+esc(x.name)+'</option>').join("")+'</select>';
   }
-  if (!valid || !t?.sku || !fm?.criteria)
+  if (!valid || (!t?.sku && !fm?.criteria))
     return (
       h +
       "<small>Загрузите свежую детализацию повторно для анализа всех SKU и критериев.</small></details>"
@@ -2911,21 +2911,22 @@ function fitAdvice(r, t, fm, i) {
           !/flash.*(night movie|peach pineapple)/i.test(x.name),
       ),
     ),
-    seen = t.sku,
-    known = t.known || [],
+    seen = t?.sku || [],
+    known = t?.known || [],
     rules = fitRules(type, beer);
   h +=
     "<small>История продаж ≠ наличие на полке. Баллы — вес группы, не гарантированный прирост. Для Focus уточните региональную матрицу и число дверей ХО.</small>";
+  if(!t?.sku) h+="<p>Нет истории SKU на Sheet4. Ниже контрольный ассортимент по оборудованию, отсутствие товара не подтверждено.</p>";
   for (let g of rules) {
-    let score = fitCriterion(fm, g);
-    if (score === null || score === undefined || score * 100 >= g.max - 0.05)
+    let score = fm?.criteria ? fitCriterion(fm, g) : null;
+    if (score != null && score * 100 >= g.max - 0.05)
       continue;
     let items = fitMissing(g, seen, known, stock);
     h +=
       '<div class="task"><b>' +
       esc(g.label) +
       "</b><br><small>По отчёту " +
-      fmt(score * 100) +
+      (score == null ? "нет оценки" : fmt(score * 100)) +
       " п.п. / вес " +
       g.max +
       " п.п.</small>" +

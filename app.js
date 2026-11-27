@@ -2909,7 +2909,7 @@ function fitAdvice(r, t, fm, i) {
     const opts=[...new Map([...(s.detail?.shops||[]),...(s.detail?.fit||[])].filter(x=>x.id).map(x=>[String(x.id),x])).values()];
     h+='<p>Точка не сопоставлена с отчётом. Выберите её вручную:</p><select onchange="fitLink('+esc(JSON.stringify(r.name))+','+esc(JSON.stringify(r.address||""))+',this.value)"><option value="">Выберите ТТ из детализации</option>'+opts.map(x=>'<option value="'+esc(String(x.id))+'">'+esc(x.name)+'</option>').join("")+'</select>';
   }
-  if (!valid || (!t?.sku && !fm?.criteria))
+  if (!valid)
     return (
       h +
       "<p>Загрузите свежую детализацию повторно для анализа всех SKU и критериев.</p>"+equipmentPanel+"</details>"
@@ -2927,6 +2927,7 @@ function fitAdvice(r, t, fm, i) {
     rules = fitRules(type, beer);
   h +=
     "<small>История продаж ≠ наличие на полке. Баллы — вес группы, не гарантированный прирост. Для Focus уточните региональную матрицу и число дверей ХО.</small>";
+  if(!fm?.criteria) h+="<p>Нет подробных оценок критериев. Ниже контрольные рекомендации, не подтвержденные нарушения FIT.</p>";
   if(!t?.sku) h+="<p>Нет истории SKU на Sheet4. Ниже контрольный ассортимент по оборудованию, отсутствие товара не подтверждено.</p>";
   for (let g of rules) {
     let score = fm?.criteria ? fitCriterion(fm, g) : null;

@@ -1873,6 +1873,10 @@ function routeFitTile(label, v) {
     '"></i></div></div>'
   );
 }
+let activeVisit=null;
+function visitStart(i){activeVisit={day:routeDate(),i,key:routeKey(routeRows(routeDate())[i])};render();window.scrollTo(0,0);}
+function visitEnd(v){const a=activeVisit;activeVisit=null;if(v&&a)routeStatus(a.i,v);else render();window.scrollTo(0,0);}
+function visitCurrent(){return activeVisit&&activeVisit.day===routeDate()&&routeRows(routeDate())[activeVisit.i]&&routeKey(routeRows(routeDate())[activeVisit.i])===activeVisit.key?activeVisit:null;}
 function routeCards() {
   let rows = routeRows(routeDate()),
     fit = s.detail?.fit || [],
@@ -1880,7 +1884,8 @@ function routeCards() {
   return (
     rows
       .map((r, i) => ({ r, i }))
-      .filter(({ r }) => {
+      .filter(({ r,i }) => {
+        if(visitCurrent())return i===activeVisit.i;
         let st = r.status || "Не посещено";
         return (
           (routeFilter === "all" ||
@@ -1932,7 +1937,7 @@ function routeCards() {
               : '<span class="rtgreen">Все группы закрыты</span>'
             : "<small>Нет однозначных данных</small>") +
           "</div></div>" +
-          fitAdvice(r, t, fm, i) +
+          (visitCurrent()?fitAdvice(r,t,fm,i):'<button onclick="visitStart('+i+')">Начать визит</button>') +
           '<div class="rtactions"><button class="' +
           (st === "Посещено" ? "rtactive" : "") +
           '" onclick="routeStatus(' +
@@ -1976,6 +1981,8 @@ function routeRefresh() {
   }
 }
 function routeUI() {
+  if(visitCurrent())return '<div class="pagehead">Активный визит</div><section><button onclick="visitEnd()">← К маршруту</button></section><div id="routeCards">'+routeCards()+'</div><section><h3>Завершить визит</h3><button onclick="visitEnd(\'Посещено\')">Посещено</button> <button onclick="visitEnd(\'Без заказа\')">Без заказа</button> <button onclick="visitEnd(\'Закрыто\')">Закрыто</button></section>';
+  activeVisit=null;
   let day = routeDate(),
     rows = routeRows(day),
     dow = new Date(day + "T12:00:00").getDay(),
@@ -2857,7 +2864,7 @@ function fitAdvice(r, t, fm, i) {
     h =
       '<details data-fit-key="' +
       esc(key) +
-      '"><summary>FIT · рекомендации Urban' + (routeNorm(r.name)==="бастау+"?" · тестовая ТТ":"") + '</summary><small>Матрица: ' +
+      '" open><summary>FIT · рекомендации Urban' + (routeNorm(r.name)==="бастау+"?" · тестовая ТТ":"") + '</summary><small>Матрица: ' +
       esc(t?.matrix || "не определена") +
       "</small><label>ХО NonAlco</label>" +
       select(
@@ -2895,6 +2902,9 @@ function fitAdvice(r, t, fm, i) {
         ],
         flashHO,
       ) + fitCountsUI(key,eq);
+  const equipmentHTML=h.slice(h.indexOf("<label>ХО NonAlco</label>"));
+  h=h.slice(0,h.indexOf("<label>ХО NonAlco</label>"));
+  const equipmentPanel="<details><summary>Настроить оборудование</summary>"+equipmentHTML+"</details>";
   if (!t && !fm) {
     const opts=[...new Map([...(s.detail?.shops||[]),...(s.detail?.fit||[])].filter(x=>x.id).map(x=>[String(x.id),x])).values()];
     h+='<p>Точка не сопоставлена с отчётом. Выберите её вручную:</p><select onchange="fitLink('+esc(JSON.stringify(r.name))+','+esc(JSON.stringify(r.address||""))+',this.value)"><option value="">Выберите ТТ из детализации</option>'+opts.map(x=>'<option value="'+esc(String(x.id))+'">'+esc(x.name)+'</option>').join("")+'</select>';
@@ -2902,7 +2912,7 @@ function fitAdvice(r, t, fm, i) {
   if (!valid || (!t?.sku && !fm?.criteria))
     return (
       h +
-      "<small>Загрузите свежую детализацию повторно для анализа всех SKU и критериев.</small></details>"
+      "<p>Загрузите свежую детализацию повторно для анализа всех SKU и критериев.</p>"+equipmentPanel+"</details>"
     );
   let stock = stockAliases(
       (s.stockReport?.rows || []).filter(
@@ -2973,7 +2983,7 @@ function fitAdvice(r, t, fm, i) {
   if (type === "flash" || type === "pepsi" || type === "flex")
     h +=
       "<p><small>Flash: 2 Ultra + Classic + Ultra 0,25 + 2 дополнительных SKU, 6 фейсов. Для точки без ХО — 2 SKU.</small></p>";
-  return h + "</details>";
+  return h + equipmentPanel + "</details>";
 }
 function promoUI() {
   return '<section><h3>Калькулятор акций</h3><label>Цена за штуку</label><input id="prPrice" type="number" min="0" value="0" oninput="promoCalc()"><label>Оплачиваемые штуки</label><input id="prQty" type="number" min="0" value="24" oninput="promoCalc()"><label>Акция</label><select id="prRule" onchange="promoCalc()"><option value="4">4+1</option><option value="6">6+1</option><option value="0">Без акции</option></select><label>Объём единицы, л</label><input id="prLit" type="number" min="0" step=".01" value=".43" oninput="promoCalc()"><div id="prResult">Введите цену</div></section>';

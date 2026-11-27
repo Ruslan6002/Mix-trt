@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.openai/
+private-fixtures/
+*.xlsx
+*.xls
+*.pdf
+mix-backup*.json
+test-results/

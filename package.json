@@ -1,0 +1,13 @@
+{
+  "name": "mix-assistant",
+  "version": "0.10.8",
+  "private": true,
+  "scripts": {
+    "test": "node tests/regression.cjs",
+    "check": "node --check app.js"
+  },
+  "devDependencies": {
+    "linkedom": "0.18.12",
+    "xlsx": "0.18.5"
+  }
+}

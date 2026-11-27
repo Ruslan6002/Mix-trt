@@ -2686,12 +2686,12 @@ function fitRules(type, beer) {
  item("Carlsberg бутылка", /(?:carlsberg|карлсберг).*бут/i),
  item("Holsten Light бутылка", /(?:holsten|хольстен).*light.*бут/i),
  item("1664 Blanc бутылка", /(?:1664|кроненбург|kronenbourg).*бут/i),
- item("Garage бутылка — региональный вкус", /garage.*бут/i),
+ item("Garage бутылка — проверить региональный вкус", /garage.*бут/i),
  item("1664 Blanc банка", /(?:1664|кроненбург|kronenbourg).*бан/i),
  item("Holsten Premium банка", /(?:holsten|хольстен).*(?:premium|пилс|премиум).*бан/i),
- item("Garage банка — региональный вкус", /garage.*бан/i),
+ item("Garage банка — проверить региональный вкус", /garage.*бан/i),
  item("Жатецкий Гусь мягкое банка", /(?:жатецкий|zatecky).*(?:мягк|myagk).*бан/i),
- item("Somersby — региональные вкусы", /somersby/i),
+ item("Somersby — проверить региональные вкусы", /somersby/i),
  item("Holsten Premium бутылка", /(?:holsten|хольстен).*(?:premium|пилс|премиум).*бут/i),
  ]);
     }
@@ -2721,7 +2721,8 @@ function skuKey(name) {
 }
 function fitMissing(group, seen, known, stock) {
   return group.items.flatMap((item) => {
-    const have = new Set(seen.filter((n) => item.re.test(n)).map(skuKey)).size,
+    const regional = group.key==="focusBeer" && /региональн/.test(item.label);
+    const have = regional ? 0 : new Set(seen.filter((n) => item.re.test(n)).map(skuKey)).size,
       need = Math.max(0, item.count - have);
     if (!need) return [];
     const names = known.filter(
@@ -2954,8 +2955,8 @@ function fitAdvice(r, t, fm, i) {
       const gap=items.reduce((n,x)=>n+(Number(x.name.match(/не хватает (\d+) SKU/)?.[1])||1),0);
       const tolerance=beerDoors==="1d"?3:0;
       h+='<p><small>'+ (norm===null?'Уточните двери ХО.':'Focus: '+norm+' SKU'+(tolerance?' · допустимое отклонение −3':' · отклонение не указано'))+' · региональные вкусы уточнить. История SKU не подтверждает выкладку.</small></p>';
-      if(norm!==null&&t?.sku?.length)h+='<p><small>По истории: '+Math.max(0,norm-gap)+' из '+norm+' SKU; до ориентира '+Math.max(0,gap-tolerance)+' SKU. Проверить на полке.</small></p>';
-      if(norm!==null&&t?.sku?.length&&gap<=tolerance)items=[];
+      if(norm!==null&&t?.sku?.length)h+='<p><small>По истории подтверждены нерегиональные позиции: '+Math.max(0,norm-gap)+'. Региональные вкусы и допустимое отклонение проверить отдельно.</small></p>';
+      // Regional alternatives are not verified; do not suppress checklist based on tolerance.
     }
     h +=
       '<div class="task"><b>' +

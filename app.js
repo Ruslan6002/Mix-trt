@@ -20,7 +20,9 @@ try {
   storageProblem =
     "Не удалось прочитать сохранённые данные. Исходная запись сохранена. Восстановите корректную резервную копию в разделе Ещё.";
 }
-let tab = 0;
+function readUI(){try{return JSON.parse(sessionStorage.getItem("mix-ui")||"{}")||{};}catch{return {};}}
+const restoredUI=readUI();
+let tab=Number.isInteger(restoredUI.tab)&&restoredUI.tab>=0&&restoredUI.tab<=10?restoredUI.tab:0;
 const tabs = [
   "Главная",
   "Задачи",
@@ -100,6 +102,7 @@ function shortcut(i, label) {
   );
 }
 function render() {
+  try{sessionStorage.setItem("mix-ui",JSON.stringify({tab,visit:activeVisit,client:clientEditIndex,clientName:s.clients[clientEditIndex]?.a}));}catch{}
   $("nav").innerHTML = [0, 7, 10, 3, 4, 9]
     .map(
       (i) =>
@@ -1613,7 +1616,7 @@ async function deleteDoc(id) {
     listDocs();
   };
 }
-let clientEditIndex=null;
+let clientEditIndex=Number.isInteger(restoredUI.client)&&s.clients[restoredUI.client]?.a===restoredUI.clientName?restoredUI.client:null;
 function clientOpen(i){clientEditIndex=i;render();window.scrollTo(0,0);}
 function clientSettings(){
  const x=s.clients[clientEditIndex],r={name:x.a,address:x.b||""};
@@ -1864,7 +1867,7 @@ function routeFitTile(label, v) {
     '"></i></div></div>'
   );
 }
-let activeVisit=null;
+let activeVisit=restoredUI.visit||null;
 function visitStart(i){activeVisit={day:routeDate(),i,key:routeKey(routeRows(routeDate())[i])};render();window.scrollTo(0,0);}
 function visitEnd(v){const a=activeVisit;activeVisit=null;if(v&&a)routeStatus(a.i,v);else render();window.scrollTo(0,0);}
 function visitCurrent(){return activeVisit&&activeVisit.day===routeDate()&&routeRows(routeDate())[activeVisit.i]&&routeKey(routeRows(routeDate())[activeVisit.i])===activeVisit.key?activeVisit:null;}
@@ -3183,3 +3186,5 @@ function bindLabels() {
 
 routeMigrateNotes();
 render();
+window.addEventListener("pagehide",()=>{try{sessionStorage.setItem("mix-scroll",String(window.scrollY));}catch{}});
+try{const y=Number(sessionStorage.getItem("mix-scroll")||0);if(y>0)requestAnimationFrame(()=>window.scrollTo(0,y));}catch{}

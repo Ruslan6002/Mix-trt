@@ -2850,8 +2850,19 @@ function fitFacing(g,label,type,beerDoors){
  }
  return "";
 }
+function fitPrevious(key,day,store){
+ let best=null;
+ for(const [k,checks] of Object.entries(store||{})){
+ let pair;try{pair=JSON.parse(k)}catch{continue}
+ if(Array.isArray(pair)&&pair[0]===key&&pair[1]<day&&(!best||pair[1]>best.day))best={day:pair[1],checks};
+ }
+ return best;
+}
+function fitSnapshot(key,day,store){
+ return store?.[JSON.stringify([key,day])]??fitPrevious(key,day,store)?.checks??{};
+}
 function fitCheck(key,day,sku,value){
- s.fitChecks??={};const k=JSON.stringify([key,day]);s.fitChecks[k]??={};if(value==="")delete s.fitChecks[k][sku];else s.fitChecks[k][sku]=value;save();const y=window.scrollY;render();window.scrollTo(0,y);
+ s.fitChecks??={};const k=JSON.stringify([key,day]);s.fitChecks[k]??={...fitSnapshot(key,day,s.fitChecks)};if(value==="")delete s.fitChecks[k][sku];else s.fitChecks[k][sku]=value;save();const y=window.scrollY;render();window.scrollTo(0,y);
 }
 function fitCheckButtons(key,day,sku){
  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0">'+[["yes","✓ Есть","#166534"],["no","✕ Нет","#991b1b"]].map(([v,l,bg])=>'<button type="button" style="background:'+bg+';color:white;min-height:44px" onclick="fitCheck('+[key,day,sku,v].map(x=>esc(JSON.stringify(x))).join(",")+')">'+l+'</button>').join("")+'</div>';
@@ -2964,7 +2975,9 @@ function fitAdvice(r, t, fm, i) {
     "<small>История продаж ≠ наличие на полке. Баллы — вес группы, не гарантированный прирост. Для Focus уточните региональную матрицу и число дверей ХО.</small>";
   if(!fm?.criteria) h+="<p>Подробные оценки недоступны. Список для проверки.</p>";
   if(!t?.sku) h+="<p>Контрольный ассортимент: история SKU недоступна. Проверьте наличие в магазине.</p>";
-  const checks=s.fitChecks?.[JSON.stringify([key,day])]||{}, order=[], blocked=[], present=[];
+  const previous=fitPrevious(key,day,s.fitChecks);
+  const checks=fitSnapshot(key,day,s.fitChecks), order=[], blocked=[], present=[];
+  if(previous&&!s.fitChecks?.[JSON.stringify([key,day])])h+='<p><small>Отметки перенесены с '+esc(previous.day)+' · проверьте изменения. Чтобы изменить позицию, верните её в проверку.</small></p>';
   for (let g of rules) {
     let score = fm?.criteria ? fitCriterion(fm, g) : null;
     if (score != null && score * 100 >= g.max - 0.05)

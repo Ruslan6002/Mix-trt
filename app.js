@@ -2615,7 +2615,8 @@ function fitRules(type, beer) {
           pepsi(v),
         ),
       ),
-      item("Mirinda 1 л", /mirinda.*1[.,]0/i),
+      item("Mirinda 1 л", /mirinda.*1(?:[.,]0)?\s*(?:л|l|\*)/i),
+      item("7UP 1 л", /7up.*1(?:[.,]0)?\s*(?:л|l|\*)/i),
     ]);
     add("lipton", "Lipton", 12, 20, [
       item("Lipton персик 1 л", lip("персик", "1[.,]0")),
@@ -2735,6 +2736,7 @@ function fitMissing(group, seen, known, stock) {
           item.count > 1
             ? item.label + " · не хватает " + need + " SKU"
             : names[0] || item.label,
+        label: item.label,
         known: names.length > 0,
         stocks: candidates.slice(0, 5),
       },
@@ -2814,6 +2816,29 @@ function fitLink(name,address,id){
  if(id){s.fitLinks[key]=id;s.fitEquipment??={};if(s.fitEquipment[old]&&!s.fitEquipment["shop:"+id])s.fitEquipment["shop:"+id]={...s.fitEquipment[old]};}
  else delete s.fitLinks[key];
  save();render();
+}
+function fitFacing(g,label,type,beerDoors){
+ const l=label.toLowerCase();
+ if(g.key==="national"){
+ if(beerDoors==="none")return "OSA";
+ const n=beerDoors==="1d"?[4,2,3,4,1,2]:beerDoors==="2d"?[6,3,4,7,2,3]:null;
+ if(!n)return "";
+ const i=["большая","крепкое","экспортное","классический","карлсберг","хольстен"].findIndex(x=>l.includes(x));
+ return i<0?"":n[i]+" фейс.";
+ }
+ if(g.key==="csd"||g.key==="lipton"){
+ if(type==="flash"||type==="none")return "OSA";
+ if(g.key==="lipton")return "1 фейс";
+ if(l==="pepsi 1 л")return (type==="flex"?4:6)+" фейс.";
+ if(l==="pepsi 0,5 л")return "3 фейс.";
+ return "1 фейс";
+ }
+ if(g.key==="flash"){
+ if(type==="none")return "2 SKU по OSA";
+ if(l.includes("дополнительных"))return "2 SKU × 1 фейс";
+ return l.includes("ultra")&&!l.includes("0,25")?"2 фейс.":"1 фейс";
+ }
+ return "";
 }
 function fitAdvice(r, t, fm, i) {
   let key = fitKey(r, t || fm),
@@ -2920,7 +2945,7 @@ function fitAdvice(r, t, fm, i) {
       '<div class="task"><b>' +
       esc(g.label) +
       "</b><br><small>Вес критерия: "+g.max+"%"+(score==null?"":" · оценка: "+fmt(score*100)+" п.п.")+"</small>"+
-      items.map(x=>'<div style="padding:6px 0;display:flex;gap:8px;align-items:baseline"><span aria-hidden="true">○</span><span>'+esc(x.name.replace(/ · не хватает (\d+) SKU/," · проверить $1 SKU"))+(x.stocks.length&&!x.stocks.some(st=>st.qty>0)?' <small>· нет на складе</small>':'')+'</span></div>').join("")+
+      items.map(x=>'<div style="padding:6px 0;display:flex;gap:8px;align-items:baseline"><span aria-hidden="true">○</span><span>'+esc(x.name.replace(/ · не хватает (\d+) SKU/," · проверить $1 SKU"))+(fitFacing(g,x.label,type,beerDoors)?' <b>· '+esc(fitFacing(g,x.label,type,beerDoors))+'</b>':'')+(x.stocks.length&&!x.stocks.some(st=>st.qty>0)?' <small>· нет на складе</small>':'')+'</span></div>').join("")+
       (items.length ? "" : "<small>Проверить выкладку, фейсы и фото.</small>") +
       "</div>";
   }

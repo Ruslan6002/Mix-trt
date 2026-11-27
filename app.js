@@ -2848,8 +2848,11 @@ function fitFacing(g,label,type,beerDoors){
 function fitCheck(key,day,sku,value){
  s.fitChecks??={};const k=JSON.stringify([key,day]);s.fitChecks[k]??={};if(value==="")delete s.fitChecks[k][sku];else s.fitChecks[k][sku]=value;save();const y=window.scrollY;render();window.scrollTo(0,y);
 }
-function fitCheckButtons(key,day,sku,value){
- return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 10px">'+[["yes","Есть"],["no","Нет"],["","Не проверено"]].map(([v,l])=>'<button type="button" aria-pressed="'+(value===v)+'" class="'+(value===v?'':'secondary')+'" onclick="fitCheck('+[key,day,sku,v].map(x=>esc(JSON.stringify(x))).join(",")+')">'+l+'</button>').join("")+'</div>';
+function fitCheckButtons(key,day,sku){
+ return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0">'+[["yes","✓ Есть","#166534"],["no","✕ Нет","#991b1b"]].map(([v,l,bg])=>'<button type="button" style="background:'+bg+';color:white;min-height:44px" onclick="fitCheck('+[key,day,sku,v].map(x=>esc(JSON.stringify(x))).join(",")+')">'+l+'</button>').join("")+'</div>';
+}
+function fitCheckedRow(key,day,x){
+ return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0"><span style="flex:1">'+esc(x.name)+'</span><button class="secondary" type="button" onclick="fitCheck('+[key,day,x.sku,""].map(v=>esc(JSON.stringify(v))).join(",")+')">Отменить</button></div>';
 }
 function fitAdvice(r, t, fm, i) {
   let key = fitKey(r, t || fm),
@@ -2947,7 +2950,7 @@ function fitAdvice(r, t, fm, i) {
     "<small>История продаж ≠ наличие на полке. Баллы — вес группы, не гарантированный прирост. Для Focus уточните региональную матрицу и число дверей ХО.</small>";
   if(!fm?.criteria) h+="<p>Подробные оценки недоступны. Список для проверки.</p>";
   if(!t?.sku) h+="<p>Контрольный ассортимент: история SKU недоступна. Проверьте наличие в магазине.</p>";
-  const checks=s.fitChecks?.[JSON.stringify([key,day])]||{}, order=[];
+  const checks=s.fitChecks?.[JSON.stringify([key,day])]||{}, order=[], blocked=[], present=[];
   for (let g of rules) {
     let score = fm?.criteria ? fitCriterion(fm, g) : null;
     if (score != null && score * 100 >= g.max - 0.05)
@@ -2972,8 +2975,10 @@ function fitAdvice(r, t, fm, i) {
       items.map(x=>{
  const sku=g.key+":"+x.label, value=checks[sku]||"", available=x.stocks.some(st=>st.qty>0);
  const alternative=/региональн|на выбор|дополнительных/.test(x.label);
- if(value==="no"&&available&&!alternative)order.push(x.name);
- return '<div style="padding:6px 0"><span>'+esc(x.name.replace(/ · не хватает (\d+) SKU/," · проверить $1 SKU"))+(fitFacing(g,x.label,type,beerDoors)?' <b>· '+esc(fitFacing(g,x.label,type,beerDoors))+'</b>':'')+'</span>'+fitCheckButtons(key,day,sku,value)+(value==="no"?(alternative?'<small>Уточнить конкретный вкус</small>':available?'<small>Предложить к заказу</small>':'<small>Наличие на складе не подтверждено или товар отсутствует</small>'):'')+'</div>';
+ const name=x.name.replace(/ · не хватает (\d+) SKU/," · проверить $1 SKU");
+ if(value==="yes"){present.push({sku,name});return "";}
+ if(value==="no"){(available&&!alternative?order:blocked).push({sku,name:name+(alternative?" · уточнить вкус":available?"":" · склад: нет или неизвестно")});return "";}
+ return '<div style="padding:10px 0;border-bottom:1px solid #64748b44"><b>'+esc(name)+'</b>'+(fitFacing(g,x.label,type,beerDoors)?' <small>· '+esc(fitFacing(g,x.label,type,beerDoors))+'</small>':'')+fitCheckButtons(key,day,sku)+'</div>';
  }).join("")+
       (items.length ? "" : "<small>Проверить выкладку, фейсы и фото.</small>") +
       "</div>";
@@ -2994,7 +2999,7 @@ function fitAdvice(r, t, fm, i) {
   if (type === "flash" || type === "pepsi" || type === "flex")
     h +=
       "<p><small>Flash: 2 Ultra + Classic + Ultra 0,25 + 2 дополнительных SKU, 6 фейсов. Для точки без ХО — 2 SKU.</small></p>";
-  return (order.length?'<section><h3>Предложить к заказу</h3>'+[...new Set(order)].map(n=>'<div>'+esc(n)+'</div>').join("")+'</section>':"") + h + equipmentPanel + "</details>";
+  return '<section><h3>Рекомендации к заказу · '+order.length+'</h3>'+(order.length?order.map(x=>fitCheckedRow(key,day,x)).join(""):'<small>Отметьте отсутствующие товары ниже.</small>')+(blocked.length?'<details><summary>Отсутствуют · требуют уточнения ('+blocked.length+')</summary>'+blocked.map(x=>fitCheckedRow(key,day,x)).join("")+'</details>':'')+(present.length?'<details><summary>Есть в точке ('+present.length+')</summary>'+present.map(x=>fitCheckedRow(key,day,x)).join("")+'</details>':'')+'</section>'+h+equipmentPanel+"</details>";
 }
 function promoUI() {
   return '<section><h3>Калькулятор акций</h3><label>Цена за штуку</label><input id="prPrice" type="number" min="0" value="0" oninput="promoCalc()"><label>Оплачиваемые штуки</label><input id="prQty" type="number" min="0" value="24" oninput="promoCalc()"><label>Акция</label><select id="prRule" onchange="promoCalc()"><option value="4">4+1</option><option value="6">6+1</option><option value="0">Без акции</option></select><label>Объём единицы, л</label><input id="prLit" type="number" min="0" step=".01" value=".43" oninput="promoCalc()"><div id="prResult">Введите цену</div></section>';

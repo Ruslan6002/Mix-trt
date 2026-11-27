@@ -32,6 +32,7 @@ const tabs = [
   "Детализация",
   "ChatGPT",
   "Ещё",
+  "Маршрут",
 ];
 const $ = (id) => document.getElementById(id),
   esc = (x) =>
@@ -86,7 +87,7 @@ const paths = [
   '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
 ];
 function ico(i) {
-  return '<svg viewBox="0 0 24 24" aria-hidden="true">' + paths[i] + "</svg>";
+  return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (i===10?'<circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 5h9a4 4 0 0 1 0 8H8a3 3 0 0 0 0 6h9"/>':paths[i]) + "</svg>";
 }
 function shortcut(i, label) {
   return (
@@ -99,11 +100,11 @@ function shortcut(i, label) {
   );
 }
 function render() {
-  $("nav").innerHTML = [0, 7, 3, 4, 9]
+  $("nav").innerHTML = [0, 7, 10, 3, 4, 9]
     .map(
       (i) =>
         '<button class="' +
-        (tab === i || (i === 9 && ![0, 7, 3, 4].includes(tab))
+        (tab === i || (i === 9 && ![0, 7, 10, 3, 4].includes(tab))
           ? "active"
           : "") +
         '" onclick="go(' +
@@ -261,9 +262,10 @@ function render() {
     h =
       '<section><h3>Загрузка документов</h3><label>Тип документа</label><select id="doctype"><option>Детализация KPI</option><option>Складские остатки</option><option>Клиентская база</option><option>Дневные продажи</option><option>Накладные</option></select><input type="file" id="docfile" multiple accept=".xlsx,.xls,.csv,.pdf,.txt,.html,.htm,image/*"><textarea id="pastezone" placeholder="Нажми сюда и выбери Вставить или Ctrl+V" onpaste="pasteDocs(event)" ondragover="event.preventDefault()" ondrop="dropDocs(event)"></textarea><button onclick="readClipboard()">Вставить из буфера</button> <button onclick="uploadDocs()">Сохранить файлы</button><p id="docstatus"></p><small>Файлы сохраняются на устройстве. Анализ складского PDF доступен в разделе Склад. Анализ KPI доступен в разделе Детализация.</small></section><section id="doclist">Загрузка списка…</section>';
     setTimeout(listDocs, 0);
+  } else if (tab === 10) {
+    h=routeUI();
   } else if (tab === 3) {
-    h =
-      routeUI() + (visitCurrent() ? "" :
+    h = clientEditIndex!==null && s.clients[clientEditIndex] ? clientSettings() : (
       "<section><h3>Клиентская база · " +
       s.clients.length +
       ' ТТ</h3><label>Импорт списка (название; адрес; ИП)</label><input type="file" id="clientfile" accept=".csv,.txt"><button onclick="importClients()">Импортировать</button><input id="clientsearch" placeholder="Поиск точки" oninput="filterClients(this.value)"><label>Название</label><input id="a"><label>Адрес / ИП</label><input id="b"><button onclick="addRow(\'clients\')">Добавить</button></section><section id="clientlist">' +
@@ -1611,26 +1613,15 @@ async function deleteDoc(id) {
     listDocs();
   };
 }
-function clientRows(q) {
-  return (
-    s.clients
-      .map((r, i) => ({ r, i }))
-      .filter(({ r }) =>
-        (r.a + " " + r.b).toLowerCase().includes(q.toLowerCase()),
-      )
-      .map(
-        ({ r, i }) =>
-          '<div class="task"><b>' +
-          esc(r.a) +
-          "</b><br>" +
-          esc(r.b) +
-          "<br><button onclick=\"del('clients'," +
-          i +
-          ')">Удалить</button></div>',
-      )
-      .join("") || "Нет записей"
-  );
+let clientEditIndex=null;
+function clientOpen(i){clientEditIndex=i;render();window.scrollTo(0,0);}
+function clientSettings(){
+ const x=s.clients[clientEditIndex],r={name:x.a,address:x.b||""};
+ const t=routeMatch(s.detail?.shops||[],r.name,r.address),fm=(s.detail?.fit||[]).find(y=>t?.id&&String(y.id)===String(t.id))||routeMatch(s.detail?.fit||[],r.name,r.address);
+ return '<section><button onclick="clientEditIndex=null;render()">← Клиенты</button><h2>'+esc(x.a)+'</h2><p>'+esc(x.b)+'</p>'+fitAdvice(r,t,fm,null)+'<label>Заметка</label><textarea id="clientmemo">'+esc(routeGetNote(r))+'</textarea><button onclick="clientSaveNote()">Сохранить заметку</button></section>';
 }
+function clientSaveNote(){const x=s.clients[clientEditIndex];s.routeNotes??={};s.routeNotes[routeKey({name:x.a,address:x.b||""})]=$("clientmemo").value.trim();save();render();}
+function clientRows(q){return s.clients.map((r,i)=>({r,i})).filter(({r})=>(r.a+" "+r.b).toLowerCase().includes(q.toLowerCase())).map(({r,i})=>'<div class="task"><b>'+esc(r.a)+'</b><br>'+esc(r.b)+'<br><button onclick="clientOpen('+i+')">Настройки точки</button> <button onclick="del(\'clients\','+i+')">Удалить</button></div>').join("")||"Нет записей";}
 function filterClients(q) {
   $("clientlist").innerHTML = clientRows(q);
 }
@@ -2479,7 +2470,7 @@ function homeRoute() {
   routeFilter = "all";
   routeQuery = "";
   save();
-  go(3);
+  go(10);
 }
 function homeActions() {
   let day = new Date().toLocaleDateString("sv-SE"),
@@ -2834,7 +2825,7 @@ function fitLink(name,address,id){
  save();render();
 }
 function fitAdvice(r, t, fm, i) {
-  let key = fitKey(r, t),
+  let key = fitKey(r, t || fm),
     eq =
       s.fitEquipment?.[key] ||
       s.fitEquipment?.[routeKey(r)] ||

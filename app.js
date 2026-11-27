@@ -980,15 +980,17 @@ function openShortage(cat = "Все") {
 }
 function stockPrefs() {
   return {
-    limit: 10,
+    limit: 20,
     cat: "Все",
     keg: false,
     bib: false,
     dup: true,
     dis: true,
-    mode: "shortage",
-    sort: "asc",
+    mode: "all",
+    sort: "brand",
     ...s.stockFilters,
+    ...(s.stockFilters?.revision===2?{}:{limit:20,mode:"all",sort:"brand",keg:true,bib:true}),
+    revision:2,
   };
 }
 let stockQuery = "";
@@ -1009,11 +1011,11 @@ function stockUI() {
     "<details " +
     (report ? "" : "open") +
     '><summary>Загрузить новые остатки</summary><input type="file" id="stockfile" accept=".pdf,.txt" onchange="if(this.files[0])loadStock(this.files[0])"><textarea placeholder="Вставить PDF или текст" onpaste="stockPaste(event)"></textarea><button onclick="stockClipboard()">Из буфера</button></details><p id="stockstatus" role="status"></p></section><div id="stocksummary">' +
-    stockSummary() +
+    stockSummary() + stockChanges() +
     '</div><section><input type="search" placeholder="Поиск: Pepsi, Ultra, 0.43…" id="stocksearch" value="' +
     esc(stockQuery) +
     '" oninput="stockQuery=this.value;refreshStock()"><div class="stockchips">' +
-    ["Все", "FLASH", "CSD", "BEER", "LIPTON"]
+    ["Все", "FLASH", "CSD", "BEER", "LIPTON", "KEG", "BIB"]
       .map(
         (x) =>
           '<button data-cat="' +
@@ -1050,6 +1052,7 @@ function stockUI() {
       .join("") +
     '</div><label>Сортировка</label><select id="stocksort" onchange="stockSet(\'sort\',this.value)">' +
     [
+      ["brand", "По категориям и брендам"],
       ["name", "По названию"],
       ["asc", "Сначала мало"],
       ["desc", "Сначала много"],
@@ -1103,7 +1106,7 @@ function refreshStock() {
   document
     .querySelectorAll("[data-mode]")
     .forEach((b) => b.classList.toggle("selected", b.dataset.mode === f.mode));
-  $("stocksummary").innerHTML = stockSummary();
+  $("stocksummary").innerHTML = stockSummary()+stockChanges();
   $("stockresults").innerHTML = stockResults();
 }
 function stockAliases(rows) {
@@ -1132,7 +1135,7 @@ function stockBase() {
         (f.bib || !r.bib) &&
         (!f.dis || !/flash.*(night movie|peach pineapple)/i.test(r.name)),
     );
-  rows = stockAliases(rows);
+  rows = stockAliases(rows).map(r=>({...r,cat:r.bib?"BIB":r.keg?"KEG":r.cat}));
   if (f.dup) {
     let map = new Map();
     for (let r of rows) {
@@ -1150,6 +1153,20 @@ function stockBase() {
   }
   return rows;
 }
+function stockChanges(){
+ const history=s.stockHistory||[], current=s.stockReport;
+ if(!current)return "";
+ const reports=history.length?history:(s.stockPrevious?[s.stockPrevious]:[]);
+ if(!reports.length)return "";
+ const idx=Math.min(stockCompareIndex??reports.length-1,reports.length-1), old=reports[idx];
+ const key=r=>r.name.toLowerCase().replace(/,/g,".").replace(/\s+/g," ").trim();
+ const a=new Map(old.rows.map(r=>[key(r),r])), b=new Map(current.rows.map(r=>[key(r),r]));
+ const changes=[];
+ for(const [k,r] of b){const p=a.get(k);if(!p)changes.push([r,"Новая строка · "+fmt(r.qty)+" шт."]);else if(r.qty!==p.qty){const d=r.qty-p.qty;changes.push([r,(d>0?"+":"")+fmt(d)+" шт. · "+(d>0?"+":"−")+Math.floor(Math.abs(d)/r.pack)+" уп. + "+fmt(Math.abs(d)%r.pack)+" шт."]);}}
+ for(const [k,r] of a)if(!b.has(k))changes.push([r,"Нет строки в новом отчёте · остаток неизвестен"]);
+ return '<section><h3>История остатков</h3><label>Сравнить с отчётом</label><select onchange="stockCompareIndex=+this.value;refreshStock()">'+reports.map((r,i)=>'<option value="'+i+'" '+(i===idx?'selected':'')+'>'+esc(r.name)+' · '+esc(new Date(r.date).toLocaleString("ru-RU"))+'</option>').join("")+'</select><details><summary>Изменения: '+changes.length+'</summary>'+changes.map(([r,t])=>'<div class="task">'+esc(r.name)+'<br><small>'+esc(t)+'</small></div>').join("")+'</details><small>Рост остатка не доказывает поступление, снижение не доказывает продажу.</small></section>';
+}
+let stockCompareIndex=null;
 function stockSummary() {
   let f = stockPrefs(),
     rows = stockBase().filter((r) => f.cat === "Все" || r.cat === f.cat);
@@ -1211,8 +1228,8 @@ function stockResults() {
   let last = "";
   rows.sort(
     (a, b) =>
-      ["FLASH", "CSD", "LIPTON", "BEER"].indexOf(a.cat) -
-      ["FLASH", "CSD", "LIPTON", "BEER"].indexOf(b.cat),
+      ["FLASH", "CSD", "LIPTON", "BEER","KEG","BIB"].indexOf(a.cat) -
+      ["FLASH", "CSD", "LIPTON", "BEER","KEG","BIB"].indexOf(b.cat),
   );
   return (
     "<p><small>Найдено: " +
@@ -1237,7 +1254,7 @@ function stockResults() {
                 FLASH: "Flash",
                 CSD: "Pepsi / 7UP / Mirinda",
                 LIPTON: "Lipton",
-                BEER: "Пиво",
+                BEER: "Пиво", KEG:"Кеги", BIB:"Сиропы BIB",
               }[r.cat] || r.cat) +
               "</h3>"
             : "";
@@ -1259,13 +1276,13 @@ function stockResults() {
           "</small></div><b>" +
           esc(r.name) +
           '</b><div class="stocktop stocknumbers"><div><strong>' +
-          fmt(r.qty) +
-          "</strong><small> " +
-          (r.keg ? "кег" : "шт.") +
-          "</small></div><div><strong>" +
-          Math.floor(r.qty / r.pack) +
+          fmt(r.keg ? r.qty : Math.floor(r.qty/r.pack)) +
           "</strong><small> " +
           (r.keg ? "кег" : "уп.") +
+          "</small></div><div><strong>" +
+          fmt(r.keg ? r.qty : r.qty%r.pack) +
+          "</strong><small> " +
+          (r.keg ? "кег" : "шт. россыпью") +
           "</small></div></div><small>" +
           (r.keg
             ? ""
@@ -1356,8 +1373,10 @@ async function loadStock(file) {
     let rows = parseStock(lines);
     if (!rows.length)
       throw Error("Не найдены строки остатков. Проверьте формат PDF.");
-    if (s.stockReport && s.stockReport.name !== file.name)
+    if (s.stockReport && JSON.stringify(s.stockReport.rows)!==JSON.stringify(rows)) {
       s.stockPrevious = s.stockReport;
+      s.stockHistory=[...(s.stockHistory||[]),s.stockReport].slice(-60);
+    }
     let previous = s;
     s = {
       ...s,

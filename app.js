@@ -2593,7 +2593,11 @@ function fitRules(type, beer) {
       rules.push({ key, label, idx, max, items });
   const item = (label, re, count = 1) => ({ label, re, count });
   const pepsi = (v) => new RegExp("pepsi(?!.*zero).*" + v, "i");
-  const lip = (taste, v) => new RegExp("lipton.*" + taste + ".*" + v, "i");
+  const lip = (taste,v) => {
+ const aliases={"манго":"(?:манго|mango)","персик":"(?:персик|peach)","лимон":"(?:лимон|lemon)","малина":"(?:малин|raspberry)"};
+ const volume=v==="1[.,]0"?"1(?:[.,]0)?":v;
+ return new RegExp("(?=.*(?:lipton|липтон))(?=.*"+(aliases[taste]||taste)+")(?=.*(?:^|[^\\d.,])"+volume+"(?=\\s*(?:л|l|литр|[*×xх]|$)))","i");
+ };
   const flash = [
     item("Flash Ultra 0,43 / 0,45 л", /flash.*ultra.*0[.,]4[35]/i),
     item(

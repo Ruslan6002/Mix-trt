@@ -2845,6 +2845,12 @@ function fitFacing(g,label,type,beerDoors){
  }
  return "";
 }
+function fitCheck(key,day,sku,value){
+ s.fitChecks??={};const k=JSON.stringify([key,day]);s.fitChecks[k]??={};if(value==="")delete s.fitChecks[k][sku];else s.fitChecks[k][sku]=value;save();const y=window.scrollY;render();window.scrollTo(0,y);
+}
+function fitCheckButtons(key,day,sku,value){
+ return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 10px">'+[["yes","Есть"],["no","Нет"],["","Не проверено"]].map(([v,l])=>'<button type="button" aria-pressed="'+(value===v)+'" class="'+(value===v?'':'secondary')+'" onclick="fitCheck('+[key,day,sku,v].map(x=>esc(JSON.stringify(x))).join(",")+')">'+l+'</button>').join("")+'</div>';
+}
 function fitAdvice(r, t, fm, i) {
   let key = fitKey(r, t || fm),
     eq =
@@ -2941,6 +2947,7 @@ function fitAdvice(r, t, fm, i) {
     "<small>История продаж ≠ наличие на полке. Баллы — вес группы, не гарантированный прирост. Для Focus уточните региональную матрицу и число дверей ХО.</small>";
   if(!fm?.criteria) h+="<p>Подробные оценки недоступны. Список для проверки.</p>";
   if(!t?.sku) h+="<p>Контрольный ассортимент: история SKU недоступна. Проверьте наличие в магазине.</p>";
+  const checks=s.fitChecks?.[JSON.stringify([key,day])]||{}, order=[];
   for (let g of rules) {
     let score = fm?.criteria ? fitCriterion(fm, g) : null;
     if (score != null && score * 100 >= g.max - 0.05)
@@ -2962,7 +2969,12 @@ function fitAdvice(r, t, fm, i) {
       '<div class="task"><b>' +
       esc(g.label) +
       "</b><br><small>Вес критерия: "+g.max+"%"+(score==null?"":" · оценка: "+fmt(score*100)+" п.п.")+"</small>"+
-      items.map(x=>'<div style="padding:6px 0;display:flex;gap:8px;align-items:baseline"><span aria-hidden="true">○</span><span>'+esc(x.name.replace(/ · не хватает (\d+) SKU/," · проверить $1 SKU"))+(fitFacing(g,x.label,type,beerDoors)?' <b>· '+esc(fitFacing(g,x.label,type,beerDoors))+'</b>':'')+(x.stocks.length&&!x.stocks.some(st=>st.qty>0)?' <small>· нет на складе</small>':'')+'</span></div>').join("")+
+      items.map(x=>{
+ const sku=g.key+":"+x.label, value=checks[sku]||"", available=x.stocks.some(st=>st.qty>0);
+ const alternative=/региональн|на выбор|дополнительных/.test(x.label);
+ if(value==="no"&&available&&!alternative)order.push(x.name);
+ return '<div style="padding:6px 0"><span>'+esc(x.name.replace(/ · не хватает (\d+) SKU/," · проверить $1 SKU"))+(fitFacing(g,x.label,type,beerDoors)?' <b>· '+esc(fitFacing(g,x.label,type,beerDoors))+'</b>':'')+'</span>'+fitCheckButtons(key,day,sku,value)+(value==="no"?(alternative?'<small>Уточнить конкретный вкус</small>':available?'<small>Предложить к заказу</small>':'<small>Наличие на складе не подтверждено или товар отсутствует</small>'):'')+'</div>';
+ }).join("")+
       (items.length ? "" : "<small>Проверить выкладку, фейсы и фото.</small>") +
       "</div>";
   }
@@ -2982,7 +2994,7 @@ function fitAdvice(r, t, fm, i) {
   if (type === "flash" || type === "pepsi" || type === "flex")
     h +=
       "<p><small>Flash: 2 Ultra + Classic + Ultra 0,25 + 2 дополнительных SKU, 6 фейсов. Для точки без ХО — 2 SKU.</small></p>";
-  return h + equipmentPanel + "</details>";
+  return (order.length?'<section><h3>Предложить к заказу</h3>'+[...new Set(order)].map(n=>'<div>'+esc(n)+'</div>').join("")+'</section>':"") + h + equipmentPanel + "</details>";
 }
 function promoUI() {
   return '<section><h3>Калькулятор акций</h3><label>Цена за штуку</label><input id="prPrice" type="number" min="0" value="0" oninput="promoCalc()"><label>Оплачиваемые штуки</label><input id="prQty" type="number" min="0" value="24" oninput="promoCalc()"><label>Акция</label><select id="prRule" onchange="promoCalc()"><option value="4">4+1</option><option value="6">6+1</option><option value="0">Без акции</option></select><label>Объём единицы, л</label><input id="prLit" type="number" min="0" step=".01" value=".43" oninput="promoCalc()"><div id="prResult">Введите цену</div></section>';

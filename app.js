@@ -2682,14 +2682,18 @@ function fitRules(type, beer) {
         item("Garage Raspberry Currant", /garage.*raspberry/i),
         item("Garage Hardcore Soju", /garage.*soju/i),
       ]);
-      add("focusBeer", "Focus · регион и двери уточнить", 1, 20, [
-        item("Garage в бутылке", /garage.*бут/i),
-        item("Garage в банке", /garage.*бан/i),
-        item("Somersby — вкусы по матрице", /somersby/i),
-        item("Кроненбург Бланк", /кроненбург.*бланк/i),
-        item("Хольстен Пилснер", /х[оo]льстен.*пил/i),
-        item("Карлсберг в бутылке", /карлсберг.*бут/i),
-      ]);
+      add("focusBeer", "Beer Focus", 1, 20, [
+ item("Carlsberg бутылка", /(?:carlsberg|карлсберг).*бут/i),
+ item("Holsten Light бутылка", /(?:holsten|хольстен).*light.*бут/i),
+ item("1664 Blanc бутылка", /(?:1664|кроненбург|kronenbourg).*бут/i),
+ item("Garage бутылка — региональный вкус", /garage.*бут/i),
+ item("1664 Blanc банка", /(?:1664|кроненбург|kronenbourg).*бан/i),
+ item("Holsten Premium банка", /(?:holsten|хольстен).*(?:premium|пилс|премиум).*бан/i),
+ item("Garage банка — региональный вкус", /garage.*бан/i),
+ item("Жатецкий Гусь мягкое банка", /(?:жатецкий|zatecky).*(?:мягк|myagk).*бан/i),
+ item("Somersby — региональные вкусы", /somersby/i),
+ item("Holsten Premium бутылка", /(?:holsten|хольстен).*(?:premium|пилс|премиум).*бут/i),
+ ]);
     }
   }
   return rules;
@@ -2940,7 +2944,19 @@ function fitAdvice(r, t, fm, i) {
     let score = fm?.criteria ? fitCriterion(fm, g) : null;
     if (score != null && score * 100 >= g.max - 0.05)
       continue;
+    if(g.key==="focusBeer"){
+      if(beerDoors==="1d")g.items=g.items.slice(0,9);
+      else if(beerDoors==="2d")g.items=g.items.map(x=>x.label.startsWith("Somersby")?{...x,count:2}:x);
+    }
     let items = fitMissing(g, seen, known, stock);
+    if(g.key==="focusBeer"){
+      const norm=beerDoors==="1d"?9:beerDoors==="2d"?11:null;
+      const gap=items.reduce((n,x)=>n+(Number(x.name.match(/не хватает (\d+) SKU/)?.[1])||1),0);
+      const tolerance=beerDoors==="1d"?3:0;
+      h+='<p><small>'+ (norm===null?'Уточните двери ХО.':'Focus: '+norm+' SKU'+(tolerance?' · допустимое отклонение −3':' · отклонение не указано'))+' · региональные вкусы уточнить. История SKU не подтверждает выкладку.</small></p>';
+      if(norm!==null&&t?.sku?.length)h+='<p><small>По истории: '+Math.max(0,norm-gap)+' из '+norm+' SKU; до ориентира '+Math.max(0,gap-tolerance)+' SKU. Проверить на полке.</small></p>';
+      if(norm!==null&&t?.sku?.length&&gap<=tolerance)items=[];
+    }
     h +=
       '<div class="task"><b>' +
       esc(g.label) +

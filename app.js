@@ -1929,19 +1929,7 @@ function routeCards() {
             : "<small>Нет однозначных данных</small>") +
           "</div></div>" +
           (visitCurrent()?fitAdvice(r,t,fm,i):'<button onclick="visitStart('+i+')">Начать визит</button>') +
-          '<div class="rtactions"><button class="' +
-          (st === "Посещено" ? "rtactive" : "") +
-          '" onclick="routeStatus(' +
-          i +
-          ",'Посещено')\">✓ Посещено</button><button class=\"" +
-          (st === "Закрыто" ? "rtactive" : "") +
-          '" onclick="routeStatus(' +
-          i +
-          ",'Закрыто')\">Закрыто</button><button class=\"" +
-          (st === "Без заказа" ? "rtactive" : "") +
-          '" onclick="routeStatus(' +
-          i +
-          ',\'Без заказа\')">Без заказа</button></div><details class="rtdetails"><summary>Заметка и действия' +
+          '<details class="rtdetails"><summary>Заметка и действия' +
           (note ? " · есть заметка" : "") +
           '</summary><textarea placeholder="Постоянная заметка: что обещал клиенту" id="rtnote' +
           i +

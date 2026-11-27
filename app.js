@@ -772,6 +772,7 @@ async function loadDetail(file) {
           non: num(r[23]) ? r[23] : null,
         })),
     };
+    if (!report.shops.length || !report.fit.length) throw Error("Не извлечены данные ТТ: ассортимент "+report.shops.length+", FIT "+report.fit.length+". Проверьте Sheet4 и Sheet5. Старые данные сохранены.");
     if (
       s.detail &&
       s.detail.period === report.period &&
@@ -786,7 +787,7 @@ async function loadDetail(file) {
     }
     if (tab === 7) {
       render();
-      $("detailstatus").textContent = "Обработано: 5 листов";
+      $("detailstatus").textContent = "Обработано: 5 листов · ТТ: "+report.shops.length+" · FIT: "+report.fit.length;
     }
   } catch (e) {
     el.textContent = "Ошибка: " + e.message;

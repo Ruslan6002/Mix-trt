@@ -2665,18 +2665,18 @@ function fitRules(type, beer) {
   }
   if (beer === "yes" || beer === "none") {
     add("national", "Beer · национальная", 0, beer === "yes" ? 30 : 92, [
-      item("Большая Кружка Мягкое 0,43 л", /большая кружка.*мягкое.*0[.,]43/i),
+      item("Большая Кружка Мягкое 0,43 л", /большая кружка.*мягк.*0[.,]43/i),
       item("Жатецкий Гусь крепкое 0,43 л", /жатецкий.*крепкое.*0[.,]43/i),
       item("Жатецкий Гусь экспортное 0,43 л", /жатецкий.*экспортное.*0[.,]43/i),
       item(
         "Жатецкий Гусь классический 0,43 л",
-        /жатецкий гусь\s+бан.*0[.,]43/i,
+        /жатецкий гусь(?!.*(?:new year|крепк|экспорт|мягк|№0|пшенич|светл)).*бан.*0[.,]43/i,
       ),
       item(
         "Карлсберг банка 0,43 / 0,45 л",
-        /карлсберг(?!.*безалкоголь).*бан.*0[.,]4[35]/i,
+        /(?:carlsberg|карлсберг)(?!.*(?:безалкоголь|0[.,]0)).*(?:бан|can).*0[.,]4[35]/i,
       ),
-      item("Хольстен Light банка 0,43 л", /х[оo]льстен.*light.*бан.*0[.,]43/i),
+      item("Хольстен Light банка 0,43 л", /(?:holsten|хольстен).*light.*бан.*0[.,]43/i),
     ]);
     add("afb", "AFB", 3, beer === "yes" ? 11 : 5, [
       item("Жатецкий Гусь №0", /жатецкий.*№0/i),
@@ -2687,7 +2687,7 @@ function fitRules(type, beer) {
         item("Garage Hardcore Soju", /garage.*soju/i),
       ]);
       add("focusBeer", "Beer Focus", 1, 20, [
- item("Carlsberg бутылка", /(?:carlsberg|карлсберг).*бут/i),
+ item("Carlsberg бутылка", /(?:carlsberg|карлсберг)(?!.*(?:0[.,]0|безалкоголь)).*бут/i),
  item("Holsten Light бутылка", /(?:holsten|хольстен).*light.*бут/i),
  item("1664 Blanc бутылка", /(?:1664|кроненбург|kronenbourg).*бут/i),
  item("Garage бутылка — проверить региональный вкус", /garage.*бут/i),
@@ -2735,8 +2735,7 @@ function fitMissing(group, seen, known, stock) {
     const candidates = stock
       .filter(
         (r) =>
-          item.re.test(r.name) &&
-          !seen.some((h) => skuKey(h) === skuKey(r.name)),
+          item.re.test(r.name),
       )
       .sort((a, b) => b.qty - a.qty);
     return [
@@ -2989,7 +2988,7 @@ function fitAdvice(r, t, fm, i) {
  const alternative=/региональн|на выбор|дополнительных/.test(x.label);
  const name=x.name.replace(/ · не хватает (\d+) SKU/," · проверить $1 SKU");
  if(value==="yes"){present.push({sku,name});return "";}
- if(value==="no"){(available&&!alternative?order:blocked).push({sku,name:available&&!alternative?x.label:name+(alternative?" · уточнить вкус":available?"":" · склад: нет или неизвестно"),brand:fitOrderBrand(x.label),faces:fitFacing(g,x.label,type,beerDoors)});return "";}
+ if(value==="no"){(available&&!alternative?order:blocked).push({sku,name:available&&!alternative?x.label:name+(alternative?" · уточнить вкус":available?"":x.stocks.length?" · нулевой остаток":" · не найдено в отчёте"),brand:fitOrderBrand(x.label),faces:fitFacing(g,x.label,type,beerDoors)});return "";}
  return '<div style="padding:10px 0;border-bottom:1px solid #64748b44"><b>'+esc(name)+'</b>'+(fitFacing(g,x.label,type,beerDoors)?' <small>· '+esc(fitFacing(g,x.label,type,beerDoors))+'</small>':'')+fitCheckButtons(key,day,sku)+'</div>';
  }).join("")+
       (items.length ? "" : "<small>Проверить выкладку, фейсы и фото.</small>") +

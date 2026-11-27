@@ -2856,7 +2856,7 @@ function fitAdvice(r, t, fm, i) {
     h =
       '<details data-fit-key="' +
       esc(key) +
-      '"><summary>FIT · рекомендации Urban' + (routeNorm(r.name)==="лаура"?" · тестовая ТТ":"") + '</summary><small>Матрица: ' +
+      '"><summary>FIT · рекомендации Urban' + (routeNorm(r.name)==="бастау+"?" · тестовая ТТ":"") + '</summary><small>Матрица: ' +
       esc(t?.matrix || "не определена") +
       "</small><label>ХО NonAlco</label>" +
       select(

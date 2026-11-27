@@ -2690,13 +2690,13 @@ function fitRules(type, beer) {
  item("Carlsberg бутылка", /(?:carlsberg|карлсберг)(?!.*(?:0[.,]0|безалкоголь)).*бут/i),
  item("Holsten Light бутылка", /(?:holsten|хольстен).*light.*бут/i),
  item("1664 Blanc бутылка", /(?:1664|кроненбург|kronenbourg).*бут/i),
- item("Garage бутылка — проверить региональный вкус", /garage.*бут/i),
+ item("Garage Black Cherry 0,4 л", /garage.*black cherry.*бут/i),
  item("1664 Blanc банка", /(?:1664|кроненбург|kronenbourg).*бан/i),
- item("Holsten Premium банка", /(?:holsten|хольстен).*(?:premium|пилс|премиум).*бан/i),
- item("Garage банка — проверить региональный вкус", /garage.*бан/i),
+ item("Holsten Premium банка", /(?:holsten|хольстен).*(?:premium|pilsener|pilsner|пилс|премиум).*бан/i),
+ item("Garage Hardcore Mango 0,43 л", /garage.*mango.*бан/i),
  item("Жатецкий Гусь мягкое банка", /(?:жатецкий|zatecky).*(?:мягк|myagk).*бан/i),
- item("Somersby — проверить региональные вкусы", /somersby/i),
- item("Holsten Premium бутылка", /(?:holsten|хольстен).*(?:premium|пилс|премиум).*бут/i),
+ item("Somersby Blackberry 0,43 л", /somersby.*blackberry/i),
+ item("Holsten Premium бутылка", /(?:holsten|хольстен).*(?:premium|pilsener|pilsner|пилс|премиум).*бут/i),
  ]);
     }
   }
@@ -2968,15 +2968,15 @@ function fitAdvice(r, t, fm, i) {
       continue;
     if(g.key==="focusBeer"){
       if(beerDoors==="1d")g.items=g.items.slice(0,9);
-      else if(beerDoors==="2d")g.items=g.items.map(x=>x.label.startsWith("Somersby")?{...x,count:2}:x);
+      else if(beerDoors==="2d")g.items.push({label:"Somersby Strawberry-Kiwi 0,43 л",re:/somersby.*strawberry.*kiwi/i,count:1});
     }
     let items = fitMissing(g, seen, known, stock);
     if(g.key==="focusBeer"){
       const norm=beerDoors==="1d"?9:beerDoors==="2d"?11:null;
       const gap=items.reduce((n,x)=>n+(Number(x.name.match(/не хватает (\d+) SKU/)?.[1])||1),0);
       const tolerance=beerDoors==="1d"?3:0;
-      h+='<p><small>'+ (norm===null?'Уточните двери ХО.':'Focus: '+norm+' SKU'+(tolerance?' · допустимое отклонение −3':' · отклонение не указано'))+' · региональные вкусы уточнить. История SKU не подтверждает выкладку.</small></p>';
-      if(norm!==null&&t?.sku?.length)h+='<p><small>По истории подтверждены нерегиональные позиции: '+Math.max(0,norm-gap)+'. Региональные вкусы и допустимое отклонение проверить отдельно.</small></p>';
+      h+='<p><small>'+ (norm===null?'Уточните двери ХО.':'Focus: '+norm+' SKU'+(tolerance?' · допустимое отклонение −3':' · отклонение не указано'))+' · матрица Жезказгана. История SKU не подтверждает выкладку.</small></p>';
+      if(norm!==null&&t?.sku?.length)h+='<p><small>По истории подтверждены нерегиональные позиции: '+Math.max(0,norm-gap)+'. Допустимое отклонение проверить отдельно.</small></p>';
       // Regional alternatives are not verified; do not suppress checklist based on tolerance.
     }
     h +=

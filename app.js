@@ -2801,12 +2801,12 @@ function equipmentModes(eq) {
 function fitEquipmentCount(key,k,v){
  const eq=s.fitEquipment?.[key]||{};
  const counts={...(eq.counts||{})};
- if(v==="")delete counts[k];else counts[k]=Math.max(0,Math.min(30,Math.floor(Number(v)||0)));
+ if(v==="")delete counts[k];else counts[k]=Math.max(0,Math.min(4,Math.floor(Number(v)||0)));
  fitSetKey(key,"counts",counts);
 }
 function fitCountsUI(key,eq){
  const counts=eq.counts||{};
- return '<details><summary>Количество холодильников и состояние</summary><p><small>Не проверено — неизвестно. Нет — подтверждено отсутствие. Ремонт отдельно.</small></p>'+[["beer1","Пиво 1Д"],["beer2","Пиво 2Д"],["pepsi1","Pepsi 1Д"],["pepsi2","Pepsi 2Д"],["flex","Flex 400"],["lipton","Lipton"],["flash","Flash"],["repair","В ремонте"]].map(([k,n])=>'<label>'+n+'</label><select onchange="fitEquipmentCount('+esc(JSON.stringify(key))+',&quot;'+k+'&quot;,this.value)">'+[["","Не проверено"],["0","Нет"],...Array.from({length:30},(_,i)=>[String(i+1),String(i+1)+" шт."])].map(([v,l])=>'<option value="'+v+'" '+(String(counts[k]??"")===v?"selected":"")+'>'+l+'</option>').join("")+'</select>').join("")+'<p><small>Количество — инвентаризация. Для правил FIT подтвердите типы в списках выше.</small></p></details>';
+ return '<details><summary>Количество холодильников и состояние</summary><p><small>Не проверено — неизвестно. Нет — подтверждено отсутствие. Ремонт отдельно.</small></p>'+[["beer1","Пиво 1Д"],["beer2","Пиво 2Д"],["pepsi1","Pepsi 1Д"],["pepsi2","Pepsi 2Д"],["flex","Flex 400"],["lipton","Lipton"],["flash","Flash"],["repair","В ремонте"]].map(([k,n])=>'<label>'+n+'</label><select onchange="fitEquipmentCount('+esc(JSON.stringify(key))+',&quot;'+k+'&quot;,this.value)">'+[["","Не проверено"],["0","Нет"],...Array.from({length:4},(_,i)=>[String(i+1),String(i+1)+" шт."])].map(([v,l])=>'<option value="'+v+'" '+(String(counts[k]??"")===v?"selected":"")+'>'+l+'</option>').join("")+'</select>').join("")+'<p><small>Количество — инвентаризация. Для правил FIT подтвердите типы в списках выше.</small></p></details>';
 }
 function fitOrderHint(st){
  if(!st||st.qty<=0)return "";

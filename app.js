@@ -1,4 +1,4 @@
-const APP_VERSION = "0.12.0-pilot2";
+const APP_VERSION = "0.12.0-pilot3";
 const productCache = new Map();
 const initial = {
   kpi: ["BEER", "Flash", "CSD", "Lipton"].map((name) => ({
@@ -2059,7 +2059,14 @@ function routeChange(row, remove, weekly) {
   if (weekly) {
     s.weekRoute ??= {};
     s.weekRoute[dow] = change(s.weekRoute[dow] || []);
-    for(const date of Object.keys(s.routes)) if(date>=day&&date>=new Date().toLocaleDateString("sv-SE")&&new Date(date+"T12:00:00").getDay()===dow&&!s.closedDays?.[date]&&!s.routes[date].some(r=>r.status&&r.status!=="Не посещено")) s.routes[date]=change(s.routes[date]);
+    if (s.routes[day]) s.routes[day] = change(s.routes[day]);
+    for (const date of Object.keys(s.routes)) {
+      if (date > day && date >= new Date().toLocaleDateString("sv-SE") &&
+          new Date(date+"T12:00:00").getDay() === dow &&
+          !s.closedDays?.[date] &&
+          !s.routes[date].some(r=>r.status && r.status!=="Не посещено"))
+        s.routes[date] = change(s.routes[date]);
+    }
   } else {
     s.routes[day] = change(routeRows(day));
   }

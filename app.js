@@ -1,4 +1,4 @@
-const APP_VERSION = "0.12.0-pilot4";
+const APP_VERSION = "0.12.0-pilot5";
 const productCache = new Map();
 const initial = {
   kpi: ["BEER", "Flash", "CSD", "Lipton"].map((name) => ({
@@ -2015,32 +2015,11 @@ function routeScope() {
   return $("routeScope")?.value === "week";
 }
 function routeSearch(q) {
-  let v = q.toLowerCase().trim();
-  return (
-    s.clients
-      .map((r, i) => ({ r, i }))
-      .filter(({ r }) => (r.a + " " + r.b).toLowerCase().includes(v))
-      .slice(0, 40)
-      .map(
-        ({ r, i }) =>
-          '<div class="task"><b>' +
-          esc(r.a) +
-          "</b><br><small>" +
-          esc(r.b) +
-          '</small><br><button onclick="routeAdd(' +
-          i +
-          ')">Добавить</button></div>',
-      )
-      .join("") ||
-    "<small>Нет совпадений. Добавьте клиента в базу ниже.</small>"
-  );
+ const rows=routeRows(routeDate()), v=q.toLowerCase().trim();
+ return s.clients.map((r,i)=>({r,i})).filter(({r})=>!rows.some(x=>routeKey(x)===routeKey({name:r.a,address:r.b})||(!x.address&&x.name===r.a&&s.clients.filter(y=>y.a===r.a).length===1))&&(r.a+" "+r.b).toLowerCase().includes(v)).map(({r,i})=>'<div class="task"><b>'+esc(r.a)+'</b><br><small>'+esc(r.b)+'</small><br><button onclick="routeAdd('+i+')">Добавить</button></div>').join("")||"<small>Нет доступных точек.</small>";
 }
 function routePicker() {
-  return (
-    '<details><summary>Добавить или удалить точки</summary><label>Область изменения</label><select id="routeScope"><option value="day">Только выбранная дата</option><option value="week">Каждую неделю в этот день</option></select><input type="search" placeholder="Название, адрес или ИП" oninput="$(\'routeSearchResults\').innerHTML=routeSearch(this.value)"><div id="routeSearchResults">' +
-    routeSearch("") +
-    "</div></details>"
-  );
+ return '<details id="routeEditor"><summary>Добавить или удалить ТТ</summary><label>Область изменения</label><select id="routeScope"><option value="day">Только выбранная дата</option><option value="week">Каждую неделю в этот день</option></select><h3>Уже в маршруте</h3>'+ (routeRows(routeDate()).map((r,i)=>'<div class="task"><b>'+esc(r.name)+'</b><br><small>'+esc(r.address||"")+'</small><br><button class="rtsecondary" onclick="routeRemove('+i+')">Удалить</button></div>').join("")||"<small>Маршрут пуст.</small>")+'<h3>Добавить из клиентской базы</h3><input type="search" placeholder="Название или адрес" oninput="$(\'routeSearchResults\').innerHTML=routeSearch(this.value)"><div id="routeSearchResults">'+routeSearch("")+'</div></details>';
 }
 function routeChange(row, remove, weekly) {
   let day = routeDate(),
@@ -2299,7 +2278,7 @@ function routeCards() {
           "</div></div>" +
           (visitCurrent()
             ? fitAdvice(r, t, fm, i)
-            : '<div class="rtactions"><button onclick="visitStart(' + i + ')">Начать визит</button><button class="rtsecondary" onclick="routeRemove(' + i + ')">Убрать из маршрута</button></div>') +
+            : '<button onclick="visitStart(' + i + ')">Начать визит</button>') +
           '<details class="rtdetails"><summary>Заметка и действия' +
           (note ? " · есть заметка" : "") +
           '</summary><textarea placeholder="Постоянная заметка: что обещал клиенту" id="rtnote' +
@@ -2314,9 +2293,8 @@ function routeCards() {
           i +
           ',\'\')">Очистить</button><div class="rtactions"><button onclick="routeStatus(' +
           i +
-          ",'Не посещено')\">Сбросить статус</button><button onclick=\"routeRemove(" +
-          i +
-          ')">Убрать из маршрута</button></div></details></section>'
+          ",'Не посещено')\">Сбросить статус</button>" +
+          '</div></details></section>'
         );
       })
       .join("") ||

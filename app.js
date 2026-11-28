@@ -213,7 +213,7 @@ function render() {
         .join("") +
       '<button onclick="updateKpi()">Сохранить</button></details></section><button onclick="backup()">Экспорт данных</button>';
   } else if (tab === 2) {
-    h = monoUI() + promoUI();
+    h = monoUI();
   } else if (tab === 9) {
     h =
       '<div class="pagehead">Все инструменты</div><section><div class="menu">' +

@@ -1,6 +1,6 @@
 {
   "name": "mix-assistant",
-  "version": "0.12.0-pilot4",
+  "version": "0.12.0-pilot5",
   "private": true,
   "scripts": {
     "test": "node tests/regression.cjs && node tests/stability.cjs",

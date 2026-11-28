@@ -152,7 +152,7 @@ function render() {
         }),
       ) +
       "</small><small>Локальные данные</small></div>" +
-      homeActions() +
+      homeActions() + closeMonthUI() +
       '<div class="grid kpis">' +
       s.kpi
         .map((k) => {
@@ -221,7 +221,7 @@ function render() {
       '</div></section><section><h3>Данные</h3><button onclick="backup()">Экспорт резервной копии</button> <button onclick="restorePrevious()">Вернуть состояние до восстановления</button><label>Восстановить JSON</label><input type="file" accept=".json" onchange="if(this.files[0])restoreMix(this.files[0])"><p><small>Данные хранятся в этом браузере. Копия включает данные и сохранённые исходные документы.</small></p></section>';
   } else if (tab === 1) {
     h =
-      '<section><h3>Новое поручение</h3><label>Задача</label><textarea id="task"></textarea><label>Супервайзер</label><input id="boss"><label>Срок</label><input type="date" id="due"><label>Приоритет</label><select id="priority"><option>Обычный</option><option>Высокий</option><option>Срочный</option></select><button onclick="addTask()">Добавить</button></section><section><h3>Реестр задач</h3>' +
+      '<section><h3>Новое поручение</h3><label>Задача</label><textarea id="task"></textarea><label>Торговая точка</label><select id="taskShop"><option value="">Общая задача</option>' + s.clients.map((r,i)=>'<option value="'+i+'">'+esc(r.a+" · "+r.b)+'</option>').join("") + '</select><label>Супервайзер</label><input id="boss"><label>Срок</label><input type="date" id="due"><label>Приоритет</label><select id="priority"><option>Обычный</option><option>Высокий</option><option>Срочный</option></select><button onclick="addTask()">Добавить</button></section><section><h3>Реестр задач</h3>' +
       (s.tasks
         .map(
           (t, i) =>
@@ -1916,6 +1916,7 @@ function addTask() {
   if (!$("task").value.trim()) return;
   s.tasks.push({
     name: $("task").value,
+    shop: $("taskShop")?.value!==""&&s.clients[+$("taskShop")?.value]?routeKey({name:s.clients[+$("taskShop").value].a,address:s.clients[+$("taskShop").value].b}):"",
     boss: $("boss").value,
     due: $("due").value,
     priority: $("priority").value,
@@ -1978,6 +1979,22 @@ async function backup() {
     alert("Не удалось экспортировать копию: " + e.message);
   }
 }
+
+function workDays(today, rows, closed){
+ const d=new Date(today+"T12:00:00"), month=d.getMonth(), out=[];
+ for(;d.getMonth()===month;d.setDate(d.getDate()+1)){
+ const day=d.toLocaleDateString("sv-SE"), rr=rows(day);
+ if(!closed?.[day]&&rr.length&&(day!==today||rr.some(r=>!r.status||r.status==="Не посещено")))out.push(day);
+ }return out;
+}
+function closeMonthUI(){
+ const today=new Date().toLocaleDateString("sv-SE"), days=workDays(today,routeRows,s.closedDays), valid=s.detail?.period===today.slice(5,7)+"."+today.slice(0,4);
+ return '<section><h3>Закрытие месяца</h3><b>'+days.length+' рабочих дней</b><small> · по маршруту, включая сегодня до завершения</small>'+(!valid?'<p>Загрузите детализацию текущего месяца.</p>':s.kpi.map((k,i)=>{const goal=s.monthGoals?.[k.name]??(/flash/i.test(k.name)?100:120),left=Math.max(0,k.plan*goal/100-k.fact);return '<div class="task"><b>'+esc(k.name)+'</b><label>Цель, %</label><input type="number" min="0" max="300" value="'+goal+'" onchange="monthGoal('+i+',this.value)"><small>Остаток: '+fmt(left)+' л · в день: '+(days.length?fmt(left/days.length)+' л':left?'нет рабочих дней':'0 л')+'</small></div>'}).join(""))+'</section>';
+}
+function monthGoal(i,v){if(v===""||!Number.isFinite(+v)||+v<0||+v>300)return;s.monthGoals??={};s.monthGoals[s.kpi[i].name]=+v;save();render();}
+function closeWorkDay(){const day=routeDate();s.closedDays??={};if(s.closedDays[day])delete s.closedDays[day];else if(confirm("Завершить рабочий день?"))s.closedDays[day]=true;save();render();}
+function visitTasks(r){return s.tasks.map((t,i)=>({t,i})).filter(({t})=>!t.done&&t.shop===routeKey(r)).map(({t,i})=>'<div class="task"><b>'+esc(t.name)+'</b><small> '+esc(t.due||"")+'</small><button onclick="toggle('+i+')">Выполнено</button></div>').join("");}
+
 function routeDate() {
   return (
     (typeof activeVisit !== "undefined" ? activeVisit?.day : null) ||
@@ -2042,7 +2059,7 @@ function routeChange(row, remove, weekly) {
   if (weekly) {
     s.weekRoute ??= {};
     s.weekRoute[dow] = change(s.weekRoute[dow] || []);
-    if (s.routes[day]) s.routes[day] = change(s.routes[day]);
+    for(const date of Object.keys(s.routes)) if(date>=day&&date>=new Date().toLocaleDateString("sv-SE")&&new Date(date+"T12:00:00").getDay()===dow&&!s.closedDays?.[date]&&!s.routes[date].some(r=>r.status&&r.status!=="Не посещено")) s.routes[date]=change(s.routes[date]);
   } else {
     s.routes[day] = change(routeRows(day));
   }
@@ -2075,7 +2092,7 @@ function weekUI() {
           " ТТ</p>",
       )
       .join("") +
-    "<small>Повторяется каждый месяц. Для редактирования выберите дату нужного дня недели.</small></details>"
+    "<button onclick=\"closeWorkDay()\">Завершить / открыть рабочий день</button><small>Повторяется каждый месяц. Для редактирования выберите дату нужного дня недели.</small></details>"
   );
 }
 
@@ -2255,6 +2272,7 @@ function routeCards() {
           '">' +
           esc(st) +
           "</span></div>" +
+          (visitCurrent()?visitTasks(r):"") +
           (note
             ? '<div class="rtmemo"><small>ВАЖНО · ЗАМЕТКА</small><div>' +
               esc(note) +

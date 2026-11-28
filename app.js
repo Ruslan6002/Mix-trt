@@ -1,4 +1,4 @@
-const APP_VERSION = "0.11.1-stable";
+const APP_VERSION = "0.12.0-pilot2";
 const productCache = new Map();
 const initial = {
   kpi: ["BEER", "Flash", "CSD", "Lipton"].map((name) => ({

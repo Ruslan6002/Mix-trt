@@ -1,13 +1,14 @@
 {
   "name": "mix-assistant",
-  "version": "0.10.8",
+  "version": "0.11.1-stable",
   "private": true,
   "scripts": {
-    "test": "node tests/regression.cjs",
+    "test": "node tests/regression.cjs && node tests/stability.cjs",
     "check": "node --check app.js"
   },
   "devDependencies": {
+    "fake-indexeddb": "6.0.1",
     "linkedom": "0.18.12",
-    "xlsx": "0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

@@ -1,3 +1,5 @@
+const APP_VERSION = "0.11.1-stable";
+const productCache = new Map();
 const initial = {
   kpi: ["BEER", "Flash", "CSD", "Lipton"].map((name) => ({
     name,
@@ -20,9 +22,20 @@ try {
   storageProblem =
     "Не удалось прочитать сохранённые данные. Исходная запись сохранена. Восстановите корректную резервную копию в разделе Ещё.";
 }
-function readUI(){try{return JSON.parse(sessionStorage.getItem("mix-ui")||"{}")||{};}catch{return {};}}
-const restoredUI=readUI();
-let tab=Number.isInteger(restoredUI.tab)&&restoredUI.tab>=0&&restoredUI.tab<=10?restoredUI.tab:0;
+function readUI() {
+  try {
+    return JSON.parse(sessionStorage.getItem("mix-ui") || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+const restoredUI = readUI();
+let tab =
+  Number.isInteger(restoredUI.tab) &&
+  restoredUI.tab >= 0 &&
+  restoredUI.tab <= 10
+    ? restoredUI.tab
+    : 0;
 const tabs = [
   "Главная",
   "Задачи",
@@ -66,9 +79,9 @@ function save() {
   }
 }
 function go(i) {
+  rememberView();
   tab = i;
   render();
-  window.scrollTo(0, 0);
 }
 function pay() {
   let p = s.pay;
@@ -89,7 +102,13 @@ const paths = [
   '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
 ];
 function ico(i) {
-  return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (i===10?'<circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 5h9a4 4 0 0 1 0 8H8a3 3 0 0 0 0 6h9"/>':paths[i]) + "</svg>";
+  return (
+    '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+    (i === 10
+      ? '<circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 5h9a4 4 0 0 1 0 8H8a3 3 0 0 0 0 6h9"/>'
+      : paths[i]) +
+    "</svg>"
+  );
 }
 function shortcut(i, label) {
   return (
@@ -102,7 +121,7 @@ function shortcut(i, label) {
   );
 }
 function render() {
-  try{sessionStorage.setItem("mix-ui",JSON.stringify({tab,visit:activeVisit,client:clientEditIndex,clientName:s.clients[clientEditIndex]?.a}));}catch{}
+  rememberView();
   $("nav").innerHTML = [0, 7, 10, 3, 4, 9]
     .map(
       (i) =>
@@ -199,7 +218,7 @@ function render() {
     h =
       '<div class="pagehead">Все инструменты</div><section><div class="menu">' +
       [1, 2, 3, 4, 5, 6, 7, 8].map((i) => shortcut(i)).join("") +
-      '</div></section><section><h3>Данные</h3><button onclick="backup()">Экспорт резервной копии</button> <button onclick="restorePrevious()">Вернуть состояние до восстановления</button><label>Восстановить JSON</label><input type="file" accept=".json" onchange="if(this.files[0])restoreMix(this.files[0])"><p><small>Данные хранятся в этом браузере. Экспорт не включает исходные документы.</small></p></section>';
+      '</div></section><section><h3>Данные</h3><button onclick="backup()">Экспорт резервной копии</button> <button onclick="restorePrevious()">Вернуть состояние до восстановления</button><label>Восстановить JSON</label><input type="file" accept=".json" onchange="if(this.files[0])restoreMix(this.files[0])"><p><small>Данные хранятся в этом браузере. Копия включает данные и сохранённые исходные документы.</small></p></section>';
   } else if (tab === 1) {
     h =
       '<section><h3>Новое поручение</h3><label>Задача</label><textarea id="task"></textarea><label>Супервайзер</label><input id="boss"><label>Срок</label><input type="date" id="due"><label>Приоритет</label><select id="priority"><option>Обычный</option><option>Высокий</option><option>Срочный</option></select><button onclick="addTask()">Добавить</button></section><section><h3>Реестр задач</h3>' +
@@ -266,14 +285,16 @@ function render() {
       '<section><h3>Загрузка документов</h3><label>Тип документа</label><select id="doctype"><option>Детализация KPI</option><option>Складские остатки</option><option>Клиентская база</option><option>Дневные продажи</option><option>Накладные</option></select><input type="file" id="docfile" multiple accept=".xlsx,.xls,.csv,.pdf,.txt,.html,.htm,image/*"><textarea id="pastezone" placeholder="Нажми сюда и выбери Вставить или Ctrl+V" onpaste="pasteDocs(event)" ondragover="event.preventDefault()" ondrop="dropDocs(event)"></textarea><button onclick="readClipboard()">Вставить из буфера</button> <button onclick="uploadDocs()">Сохранить файлы</button><p id="docstatus"></p><small>Файлы сохраняются на устройстве. Анализ складского PDF доступен в разделе Склад. Анализ KPI доступен в разделе Детализация.</small></section><section id="doclist">Загрузка списка…</section>';
     setTimeout(listDocs, 0);
   } else if (tab === 10) {
-    h=routeUI();
+    h = routeUI();
   } else if (tab === 3) {
-    h = clientEditIndex!==null && s.clients[clientEditIndex] ? clientSettings() : (
-      "<section><h3>Клиентская база · " +
-      s.clients.length +
-      ' ТТ</h3><label>Импорт списка (название; адрес; ИП)</label><input type="file" id="clientfile" accept=".csv,.txt"><button onclick="importClients()">Импортировать</button><input id="clientsearch" placeholder="Поиск точки" oninput="filterClients(this.value)"><label>Название</label><input id="a"><label>Адрес / ИП</label><input id="b"><button onclick="addRow(\'clients\')">Добавить</button></section><section id="clientlist">' +
-      clientRows("") +
-      "</section>");
+    h =
+      clientEditIndex !== null && s.clients[clientEditIndex]
+        ? clientSettings()
+        : "<section><h3>Клиентская база · " +
+          s.clients.length +
+          ' ТТ</h3><label>Импорт списка (название; адрес; ИП)</label><input type="file" id="clientfile" accept=".csv,.txt"><button onclick="importClients()">Импортировать</button><input id="clientsearch" placeholder="Поиск точки" oninput="filterClients(this.value)"><label>Название</label><input id="a"><label>Адрес / ИП</label><input id="b"><button onclick="addRow(\'clients\')">Добавить</button></section><section id="clientlist">' +
+          clientRows("") +
+          "</section>";
   } else {
     let [key, title, a, b] = {
       2: ["sales", "Продажа", "Торговая точка", "Объём, л"],
@@ -313,6 +334,7 @@ function render() {
       ? '<section role="alert">' + esc(storageProblem) + "</section>"
       : "") + h;
   bindLabels();
+  restoreView();
 }
 
 let payrollRows = [];
@@ -320,7 +342,9 @@ async function readPayroll(file) {
   let el = $("payimport");
   el.textContent = "Читаю Excel…";
   try {
-    let x = await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm"),
+    let x = await import(
+        "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs"
+      ),
       w = x.read(await file.arrayBuffer(), { type: "array" }),
       sheet = w.SheetNames.find((n) => n.includes("Авторасчет ЦОТ"));
     if (!sheet) throw Error("Не найден лист авторасчёта ЦОТ");
@@ -626,179 +650,232 @@ async function detailClipboard() {
   }
 }
 async function loadDetail(file) {
-  let el = $("detailstatus");
-  el.textContent = "Читаю Excel…";
+  const status = $("detailstatus");
+  if (status) status.textContent = "Читаю Excel…";
   try {
-    let x = await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm"),
-      w = x.read(await file.arrayBuffer(), { type: "array" }),
-      read = (n) => {
-        if (!w.Sheets[n]) throw Error("Нет листа " + n);
-        let sheet = w.Sheets[n],
-          rows = [];
-        for (let [addr, cell] of Object.entries(sheet)) {
-          if (!/^[A-Z]+[0-9]+$/.test(addr)) continue;
-          let pos = x.utils.decode_cell(addr);
-          if (!rows[pos.r]) rows[pos.r] = [];
-          rows[pos.r][pos.c] = cell.v;
-        }
-        return Array.from(rows, (r) => r || []);
-      },
-      a = read("Sheet1"),
-      v = read("Sheet2"),
-      m = read("Sheet3"),
-      b = read("Sheet4"),
-      f = read("Sheet5"),
-      num = (z) => typeof z === "number" && Number.isFinite(z),
-      period =
-        a
-          .slice(0, 8)
-          .flat()
-          .map((z) => String(z ?? ""))
-          .join(" ")
-          .match(/\b(0[1-9]|1[0-2])\.(20\d{2})\b/)?.[0] ||
-        file.name
-          .match(/(20\d{2})(0[1-9]|1[0-2])\d{2}/)
-          ?.slice(1, 3)
-          .reverse()
-          .join(".") ||
-        null;
-    let norm = (z) =>
-        String(z ?? "")
+    const x = await import(
+        "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs"
+      ),
+      w = x.read(await checkedBytes(file), { type: "array" });
+    const read = (name) => {
+      if (!w.Sheets[name]) throw Error("Нет листа " + name);
+      let rows = [],
+        count = 0;
+      for (const [address, cell] of Object.entries(w.Sheets[name])) {
+        if (!/^[A-Z]+\d+$/.test(address)) continue;
+        if (++count > 500000) throw Error("Слишком большой лист");
+        const pos = x.utils.decode_cell(address);
+        if (pos.r > 20000 || pos.c > 500)
+          throw Error("Неподдерживаемый размер листа");
+        (rows[pos.r] ??= [])[pos.c] = cell.v;
+      }
+      return Array.from(rows, (r) => r || []);
+    };
+    const [a, v, m, b, f] = [
+        "Sheet1",
+        "Sheet2",
+        "Sheet3",
+        "Sheet4",
+        "Sheet5",
+      ].map(read),
+      norm = (v) =>
+        String(v ?? "")
           .trim()
           .toLowerCase()
           .replace(/\s+/g, " "),
-      kh = a.findIndex((r) => norm(r[2]).includes("kpi")),
-      sh = b.findIndex((r) => norm(r[4]) === "shop id");
-    if (kh < 0 || sh < 0)
-      throw Error(
-        "Не найдены заголовки: KPI " +
-          kh +
-          ", Shop Id " +
-          sh +
-          ". Листы: " +
-          w.SheetNames.join(", "),
+      num = (v) => typeof v === "number" && Number.isFinite(v);
+    const kh = a.findIndex((r) => norm(r[2]) === "kpi"),
+      sh = b.findIndex((r) => r.some((c) => norm(c) === "shop id")),
+      fh = f.findIndex(
+        (r) =>
+          r.some((c) => /^(код точки|shop id)$/i.test(norm(c))) &&
+          r.some((c) => /торговая точка|наименование тт/i.test(norm(c))),
       );
-    let kpi = ["BEER", "Flash", "CSD", "Lipton"].map((name, i) => {
-      let r = a
+    if (kh < 0 || sh < 0 || fh < 0)
+      throw Error("Не найдены заголовки KPI, Shop Id или FIT");
+    const period =
+      a
+        .slice(0, kh)
+        .flat()
+        .map((v) => String(v ?? ""))
+        .join(" ")
+        .match(/\b(0[1-9]|1[0-2])\.(20\d{2})\b/)?.[0] || null;
+    if (!period) throw Error("Не определён период KPI");
+    const factCol = a[kh].findIndex((c) => norm(c) === "факт"),
+      planCol = a[kh].findIndex((c) => norm(c) === "план");
+    const kpi = ["BEER", "Flash", "CSD", "Lipton"].map((name) => {
+      const row = a
         .slice(kh + 1)
         .find(
           (r) =>
-            norm(r[2]).includes(name.toLowerCase()) && num(r[5]) && num(r[7]),
+            norm(r[2]).includes(name.toLowerCase()) &&
+            num(r[factCol]) &&
+            num(r[planCol]),
         );
-      if (
-        !String(r?.[2]).toLowerCase().includes(name.toLowerCase()) ||
-        !num(r[5]) ||
-        !num(r[7]) ||
-        r[7] <= 0
-      )
+      if (!row || row[factCol] < 0 || row[planCol] < 0)
         throw Error("Некорректный KPI " + name);
-      return { name, fact: r[5] * 10, plan: r[7] * 10 };
+      return { name, fact: row[factCol] * 10, plan: row[planCol] * 10 };
     });
-    let visits = { plan: 0, fact: 0 };
-    for (let r of v.slice(9))
-      if (r[4] && r[5] && num(r[7]) && num(r[8])) {
-        visits.plan += r[7];
-        visits.fact += r[8];
+    const visits = { plan: 0, fact: 0 };
+    for (const row of v)
+      if (row[4] && row[5] && num(row[7]) && num(row[8])) {
+        visits.plan += row[7];
+        visits.fact += row[8];
       }
-    let visitKpi = a.find((r) =>
+    const summary = a.find((r) =>
       /кол-во выполненных визитов/i.test(String(r[2])),
     );
-    if (visitKpi && num(visitKpi[5]) && num(visitKpi[7]))
-      visits = { monthPlan: visits.plan, plan: visitKpi[7], fact: visitKpi[5] };
-    let km = m
-      .slice(6)
-      .filter((r) => num(r[2]) && num(r[4]))
-      .reduce((a, r) => a + r[4], 0);
-    let groups = [
-      { name: "Ultra", re: /ultra.*0[.,]4[35]/i },
-      { name: "Classic", re: /energy.*0[.,]4[35]/i },
-      { name: "0,25", re: /0[.,]25/i },
-    ];
-    let cols = Array.from(b[sh], (n, i) => ({ n: String(n || ""), i })).filter(
-      (o) => o.i >= 35 && o.i <= 46,
-    );
-    groups[1].re =
-      /^(?!.*(?:ultra|bubble|exotic|mojito|pomegranate|night|peach|morning|berry|tropical|mango|apple)).*energy.*0[.,]4[35]/i;
-    let shops = new Map(),
-      cur = null;
-    for (let r of b.slice(sh + 1)) {
-      if (r[4] && r[6]) {
-        cur = String(r[4]);
-        if (!shops.has(cur))
-          shops.set(cur, {
-            id: cur,
-            name: String(r[6]).trim(),
-            seen: groups.map(() => false),
-            matrix: String(r[3] || ""),
-            sku: [],
-            known: [],
-          });
-      }
-      if (!cur || !num(r[12])) continue;
-      let t = shops.get(cur);
-      for (let i = 13; i < 135; i++) {
-        let n = String(b[sh][i] || "").trim();
-        if (!n) continue;
-        if (!t.known.includes(n)) t.known.push(n);
-        if (num(r[i]) && r[i] > 0 && !t.sku.includes(n)) t.sku.push(n);
-      }
-      groups.forEach((g, i) => {
-        if (cols.some((o) => g.re.test(o.n) && num(r[o.i]) && r[o.i] > 0))
-          t.seen[i] = true;
-      });
+    if (summary && num(summary[factCol]) && num(summary[planCol])) {
+      visits.monthPlan = visits.plan;
+      visits.fact = summary[factCol];
+      visits.plan = summary[planCol];
     }
-    let report = {
+    const km = m
+        .filter((r) => num(r[4]) && r[2])
+        .reduce((sum, r) => sum + r[4], 0),
+      headers = b[sh];
+    const idCol = headers.findIndex((c) => norm(c) === "shop id"),
+      nameCol = headers.findIndex((c) => /наименование тт/i.test(norm(c))),
+      matrixCol = headers.findIndex((c) => /код матрицы/i.test(norm(c))),
+      dateCol = headers.findIndex((c) => /дата визита/i.test(norm(c)));
+    if ([idCol, nameCol, matrixCol, dateCol].some((c) => c < 0))
+      throw Error("Неполные заголовки ассортимента");
+    const catalog = [
+        ...new Set(
+          headers
+            .slice(dateCol + 1, 135)
+            .map((c) => String(c || "").trim())
+            .filter(Boolean),
+        ),
+      ],
+      shops = new Map();
+    let current = null;
+    for (const row of b.slice(sh + 1)) {
+      if (row[idCol] && row[nameCol]) {
+        current = normalizeId(row[idCol]);
+        const existing = shops.get(current);
+        if (!existing)
+          shops.set(current, {
+            id: current,
+            name: String(row[nameCol]).trim(),
+            matrix: String(row[matrixCol] || "").trim(),
+            sku: [],
+            historical: true,
+          });
+        else if (!existing.matrix && row[matrixCol])
+          existing.matrix = String(row[matrixCol]).trim();
+      }
+      if (!current || !num(row[dateCol])) continue;
+      const t = shops.get(current);
+      for (let col = dateCol + 1; col < 135; col++) {
+        const name = String(headers[col] || "").trim();
+        if (name && num(row[col]) && row[col] > 0 && !t.sku.includes(name))
+          t.sku.push(name);
+      }
+    }
+    const flashGroups = [
+      ["Ultra", /flash.*ultra.*0[.,]4[35]/i],
+      [
+        "Classic",
+        /flash.*energy(?!.*(?:ultra|bubble|exotic|mojito|pomegranate|morning|night|peach)).*0[.,]4[35]/i,
+      ],
+      ["0,25", /flash.*0[.,]25/i],
+    ];
+    const fitHeaders = f[fh],
+      fitId = fitHeaders.findIndex((c) =>
+        /^(код точки|shop id)$/i.test(norm(c)),
+      ),
+      fitName = fitHeaders.findIndex((c) =>
+        /торговая точка|наименование тт/i.test(norm(c)),
+      ),
+      beerCol = fitHeaders.findIndex((c) => norm(c) === "total beer"),
+      nonCol = fitHeaders.findIndex((c) => norm(c) === "total nonalco");
+    if (beerCol < 0 || nonCol < 0) throw Error("Нет итоговых критериев FIT");
+    const report = {
       name: file.name,
       period,
       kpi,
       visits,
       km,
+      importedAt: new Date().toISOString(),
+      schemaVersion: 2,
+      skuCatalog: catalog,
       shops: [...shops.values()].map((t) => ({
-        id: t.id,
-        name: t.name,
-        matrix: t.matrix,
-        sku: t.sku,
-        known: t.known,
-        missing: groups
-          .filter((g, i) => cols.some((o) => g.re.test(o.n)) && !t.seen[i])
-          .map((g) => g.name),
+        ...t,
+        missing: flashGroups
+          .filter(([, re]) => !t.sku.some((n) => re.test(n)))
+          .map(([name]) => name),
       })),
       fit: f
-        .slice(8)
-        .filter((r) => r[3] && r[4] && (num(r[17]) || num(r[23])))
+        .slice(fh + 1)
+        .filter(
+          (r) => r[fitId] && r[fitName] && (num(r[beerCol]) || num(r[nonCol])),
+        )
         .map((r) => ({
-          name: String(r[4]).trim(),
-          id: String(r[3]),
-          criterionHeaders: f[7].slice(7, 28).map((x) => String(x || "")),
+          id: normalizeId(r[fitId]),
+          name: String(r[fitName]).trim(),
+          criterionHeaders: Array.from({ length: 21 }, (_, i) =>
+            String(fitHeaders[i + 7] || ""),
+          ),
           criteria: Array.from({ length: 21 }, (_, i) =>
             num(r[i + 7]) ? r[i + 7] : null,
           ),
-          beer: num(r[17]) ? r[17] : null,
-          non: num(r[23]) ? r[23] : null,
+          beer: num(r[beerCol]) ? r[beerCol] : null,
+          non: num(r[nonCol]) ? r[nonCol] : null,
         })),
     };
-    if (!report.shops.length || !report.fit.length) throw Error("Не извлечены данные ТТ: ассортимент "+report.shops.length+", FIT "+report.fit.length+". Проверьте Sheet4 и Sheet5. Старые данные сохранены.");
-    if (
-      s.detail &&
-      s.detail.period === report.period &&
-      JSON.stringify(s.detail.kpi) !== JSON.stringify(kpi)
-    )
-      s.detailPrevious = s.detail;
-    let previous = s;
-    s = { ...s, detail: report, forecastDate: "", kpi };
-    if (!save()) {
-      s = previous;
-      throw Error("Импорт не сохранён. Предыдущие данные оставлены.");
+    if (!report.shops.length || !report.fit.length)
+      throw Error("Нет данных торговых точек");
+    const content = (r) => ({
+      period: r.period,
+      kpi: r.kpi,
+      shops: r.shops,
+      fit: r.fit,
+      skuCatalog: r.skuCatalog,
+    });
+    if (s.detail && contentSame(content(s.detail), content(report))) {
+      if (status)
+        status.textContent = "Этот отчёт уже загружен. Данные не задвоены.";
+      return;
     }
+    if (
+      s.detail?.period === period &&
+      kpi.some(
+        (k) =>
+          k.fact < (s.detail.kpi.find((x) => x.name === k.name)?.fact || 0),
+      ) &&
+      !confirm(
+        "Факт ниже предыдущего отчёта. Это может быть более ранний отчёт или корректировка. Заменить текущий отчёт?",
+      )
+    )
+      return;
+    const previous = s.detail,
+      history = previous
+        ? [...(s.detailHistory || []), previous]
+        : s.detailHistory || [];
+    const next = {
+      ...s,
+      detail: report,
+      detailHistory: history,
+      detailPrevious: previous || s.detailPrevious,
+      forecastDate: "",
+      kpi,
+    };
+    if (!commitState(next))
+      throw Error("Импорт не сохранён. Предыдущие данные оставлены.");
     if (tab === 7) {
       render();
-      $("detailstatus").textContent = "Обработано: 5 листов · ТТ: "+report.shops.length+" · FIT: "+report.fit.length;
+      $("detailstatus").textContent =
+        "Обработано: 5 листов · ТТ: " +
+        report.shops.length +
+        " · FIT: " +
+        report.fit.length;
     }
   } catch (e) {
-    el.textContent = "Ошибка: " + e.message;
+    if (status) status.textContent = "Ошибка: " + e.message;
+    else alert("Ошибка: " + e.message);
   }
 }
-
 function chatUI() {
   return (
     "<section><h3>Передача в ChatGPT</h3><small>Выберите данные. Они не отправляются автоматически.</small>" +
@@ -882,12 +959,7 @@ async function importShortcut(manual = false) {
     let t = manual
       ? $("shortcutpaste").value
       : await navigator.clipboard.readText();
-    t = t.replace(/\s/g, "");
-    if (!t) throw Error("Буфер пуст");
-    let raw = atob(t),
-      bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0)),
-      pdf = raw.startsWith("%PDF-"),
-      excel = raw.startsWith("PK\x03\x04");
+    const { bytes, pdf, excel } = decodeShortcut(t);
     if (!pdf && !excel) {
       let html = new TextDecoder().decode(bytes);
       if (/<html/i.test(html)) {
@@ -990,13 +1062,15 @@ function stockPrefs() {
     cat: "Все",
     keg: false,
     bib: false,
-    dup: true,
+    dup: false,
     dis: true,
     mode: "all",
     sort: "brand",
     ...s.stockFilters,
-    ...(s.stockFilters?.revision===2?{}:{limit:20,mode:"all",sort:"brand",keg:true,bib:true}),
-    revision:2,
+    ...(s.stockFilters?.revision === 2
+      ? {}
+      : { limit: 20, mode: "all", sort: "brand", keg: true, bib: true }),
+    revision: 2,
   };
 }
 let stockQuery = "";
@@ -1017,7 +1091,8 @@ function stockUI() {
     "<details " +
     (report ? "" : "open") +
     '><summary>Загрузить новые остатки</summary><input type="file" id="stockfile" accept=".pdf,.txt" onchange="if(this.files[0])loadStock(this.files[0])"><textarea placeholder="Вставить PDF или текст" onpaste="stockPaste(event)"></textarea><button onclick="stockClipboard()">Из буфера</button></details><p id="stockstatus" role="status"></p></section><div id="stocksummary">' +
-    stockSummary() + stockChanges() +
+    stockSummary() +
+    stockChanges() +
     '</div><section><input type="search" placeholder="Поиск: Pepsi, Ultra, 0.43…" id="stocksearch" value="' +
     esc(stockQuery) +
     '" oninput="stockQuery=this.value;refreshStock()"><div class="stockchips">' +
@@ -1080,7 +1155,7 @@ function stockUI() {
     [
       ["keg", "Показывать кеги"],
       ["bib", "Показывать БИБ"],
-      ["dup", "Объединять близкие объёмы Flash (0,43/0,45)"],
+
       ["dis", "Скрывать снятые Flash"],
     ]
       .map(
@@ -1112,7 +1187,7 @@ function refreshStock() {
   document
     .querySelectorAll("[data-mode]")
     .forEach((b) => b.classList.toggle("selected", b.dataset.mode === f.mode));
-  $("stocksummary").innerHTML = stockSummary()+stockChanges();
+  $("stocksummary").innerHTML = stockSummary() + stockChanges();
   $("stockresults").innerHTML = stockResults();
 }
 function stockAliases(rows) {
@@ -1134,45 +1209,90 @@ function stockAliases(rows) {
   );
 }
 function stockBase() {
-  let f = stockPrefs(),
-    rows = (s.stockReport?.rows || []).filter(
+  let f = stockPrefs();
+  return (s.stockReport?.rows || [])
+    .filter(
       (r) =>
         (f.keg || !r.keg) &&
         (f.bib || !r.bib) &&
-        (!f.dis || !/flash.*(night movie|peach pineapple)/i.test(r.name)),
-    );
-  rows = stockAliases(rows).map(r=>({...r,cat:r.bib?"BIB":r.keg?"KEG":r.cat}));
-  if (f.dup) {
-    let map = new Map();
-    for (let r of rows) {
-      let key =
-        r.cat === "FLASH"
-          ? r.name
-              .toLowerCase()
-              .replace(/0[.,]4[35]\s*[*×xх]\s*\d+/g, "0.4")
-              .replace(/[\s,]+/g, " ")
-              .trim()
-          : r.name;
-      if (!map.has(key) || map.get(key).qty < r.qty) map.set(key, r);
+        (!f.dis || !productInfo(r.name).discontinued),
+    )
+    .map((r) => ({ ...r, cat: r.bib ? "BIB" : r.keg ? "KEG" : r.cat }));
+}
+function stockChanges() {
+  const history = s.stockHistory || [],
+    current = s.stockReport;
+  if (!current) return "";
+  const reports = history.length
+    ? history
+    : s.stockPrevious
+      ? [s.stockPrevious]
+      : [];
+  if (!reports.length) return "";
+  const idx = Math.min(
+      stockCompareIndex ?? reports.length - 1,
+      reports.length - 1,
+    ),
+    old = reports[idx];
+  const key = (r) =>
+    r.name.toLowerCase().replace(/,/g, ".").replace(/\s+/g, " ").trim();
+  const a = new Map(old.rows.map((r) => [key(r), r])),
+    b = new Map(current.rows.map((r) => [key(r), r]));
+  const changes = [];
+  for (const [k, r] of b) {
+    const p = a.get(k);
+    if (!p) changes.push([r, "Новая строка · " + fmt(r.qty) + " шт."]);
+    else if (r.qty !== p.qty) {
+      const d = r.qty - p.qty;
+      changes.push([
+        r,
+        (d > 0 ? "+" : "") +
+          fmt(d) +
+          " шт. · " +
+          (d > 0 ? "+" : "−") +
+          Math.floor(Math.abs(d) / r.pack) +
+          " уп. + " +
+          fmt(Math.abs(d) % r.pack) +
+          " шт.",
+      ]);
     }
-    rows = [...map.values()];
   }
-  return rows;
+  for (const [k, r] of a)
+    if (!b.has(k))
+      changes.push([r, "Нет строки в новом отчёте · остаток неизвестен"]);
+  return (
+    '<section><h3>История остатков</h3><label>Сравнить с отчётом</label><select onchange="stockCompareIndex=+this.value;refreshStock()">' +
+    reports
+      .map(
+        (r, i) =>
+          '<option value="' +
+          i +
+          '" ' +
+          (i === idx ? "selected" : "") +
+          ">" +
+          esc(r.name) +
+          " · " +
+          esc(new Date(r.date).toLocaleString("ru-RU")) +
+          "</option>",
+      )
+      .join("") +
+    "</select><details><summary>Изменения: " +
+    changes.length +
+    "</summary>" +
+    changes
+      .map(
+        ([r, t]) =>
+          '<div class="task">' +
+          esc(r.name) +
+          "<br><small>" +
+          esc(t) +
+          "</small></div>",
+      )
+      .join("") +
+    "</details><small>Рост остатка не доказывает поступление, снижение не доказывает продажу.</small></section>"
+  );
 }
-function stockChanges(){
- const history=s.stockHistory||[], current=s.stockReport;
- if(!current)return "";
- const reports=history.length?history:(s.stockPrevious?[s.stockPrevious]:[]);
- if(!reports.length)return "";
- const idx=Math.min(stockCompareIndex??reports.length-1,reports.length-1), old=reports[idx];
- const key=r=>r.name.toLowerCase().replace(/,/g,".").replace(/\s+/g," ").trim();
- const a=new Map(old.rows.map(r=>[key(r),r])), b=new Map(current.rows.map(r=>[key(r),r]));
- const changes=[];
- for(const [k,r] of b){const p=a.get(k);if(!p)changes.push([r,"Новая строка · "+fmt(r.qty)+" шт."]);else if(r.qty!==p.qty){const d=r.qty-p.qty;changes.push([r,(d>0?"+":"")+fmt(d)+" шт. · "+(d>0?"+":"−")+Math.floor(Math.abs(d)/r.pack)+" уп. + "+fmt(Math.abs(d)%r.pack)+" шт."]);}}
- for(const [k,r] of a)if(!b.has(k))changes.push([r,"Нет строки в новом отчёте · остаток неизвестен"]);
- return '<section><h3>История остатков</h3><label>Сравнить с отчётом</label><select onchange="stockCompareIndex=+this.value;refreshStock()">'+reports.map((r,i)=>'<option value="'+i+'" '+(i===idx?'selected':'')+'>'+esc(r.name)+' · '+esc(new Date(r.date).toLocaleString("ru-RU"))+'</option>').join("")+'</select><details><summary>Изменения: '+changes.length+'</summary>'+changes.map(([r,t])=>'<div class="task">'+esc(r.name)+'<br><small>'+esc(t)+'</small></div>').join("")+'</details><small>Рост остатка не доказывает поступление, снижение не доказывает продажу.</small></section>';
-}
-let stockCompareIndex=null;
+let stockCompareIndex = null;
 function stockSummary() {
   let f = stockPrefs(),
     rows = stockBase().filter((r) => f.cat === "Все" || r.cat === f.cat);
@@ -1234,8 +1354,8 @@ function stockResults() {
   let last = "";
   rows.sort(
     (a, b) =>
-      ["FLASH", "CSD", "LIPTON", "BEER","KEG","BIB"].indexOf(a.cat) -
-      ["FLASH", "CSD", "LIPTON", "BEER","KEG","BIB"].indexOf(b.cat),
+      ["FLASH", "CSD", "LIPTON", "BEER", "KEG", "BIB"].indexOf(a.cat) -
+      ["FLASH", "CSD", "LIPTON", "BEER", "KEG", "BIB"].indexOf(b.cat),
   );
   return (
     "<p><small>Найдено: " +
@@ -1260,7 +1380,9 @@ function stockResults() {
                 FLASH: "Flash",
                 CSD: "Pepsi / 7UP / Mirinda",
                 LIPTON: "Lipton",
-                BEER: "Пиво", KEG:"Кеги", BIB:"Сиропы BIB",
+                BEER: "Пиво",
+                KEG: "Кеги",
+                BIB: "Сиропы BIB",
               }[r.cat] || r.cat) +
               "</h3>"
             : "";
@@ -1282,23 +1404,23 @@ function stockResults() {
           "</small></div><b>" +
           esc(r.name) +
           '</b><div class="stocktop stocknumbers"><div><strong>' +
-          fmt(r.keg ? r.qty : Math.floor(r.qty/r.pack)) +
+          fmt(r.keg || r.cat === "BIB" ? r.qty : Math.floor(r.qty / r.pack)) +
           "</strong><small> " +
-          (r.keg ? "кег" : "уп.") +
-          "</small></div><div><strong>" +
-          fmt(r.keg ? r.qty : r.qty%r.pack) +
-          "</strong><small> " +
-          (r.keg ? "кег" : "шт. россыпью") +
-          "</small></div></div><small>" +
-          (r.keg
+          (r.keg ? "кег" : r.cat === "BIB" ? "BIB" : "уп.") +
+          "</small></div>" +
+          (r.keg || r.cat === "BIB"
             ? ""
-            : r.pack +
-              " шт. в упаковке · остаток россыпью " +
+            : "<div><strong>" +
               fmt(r.qty % r.pack) +
-              " шт.") +
+              "</strong><small> шт. россыпью</small></div>") +
+          "</div><small>" +
+          (r.keg || r.cat === "BIB" ? "" : r.pack + " шт. в упаковке") +
           (delta === null
             ? ""
-            : " · Δ " + (delta > 0 ? "+" : "") + fmt(delta) + " шт.") +
+            : " · Δ " +
+              (delta > 0 ? "+" : "") +
+              fmt(delta) +
+              (r.keg ? " кег" : r.cat === "BIB" ? " BIB" : " шт.")) +
           "</small></section>"
         );
       })
@@ -1306,99 +1428,140 @@ function stockResults() {
     (rows.length
       ? ""
       : "<section>Нет товаров по выбранным фильтрам</section>") +
-    "<small>Пустое количество в строке товара считается нулём. Отсутствующие строки не считаются нулевыми. Старые названия Гуся скрываются при наличии соответствующей версии v3.</small>"
+    "<small>Пустое количество в строке товара считается нулём. Отсутствующие строки не считаются нулевыми.</small>"
   );
 }
 function parseStock(lines) {
-  let rows = [];
-  for (let line of lines) {
-    let m = line
+  const rows = [],
+    seen = new Set();
+  for (const line of lines) {
+    const m = line
       .trim()
       .match(
-        /^(.*?),\s*(бан|бут\.?|кега|шт\.?)(?:\s+([\d \u00a0\u202f]+),(\d{3}))?$/i,
+        /^(.*?),\s*(бан|бут\.?|кега|кег|шт\.?|can|bottle)(?:\s+(-?[\d \u00a0\u202f]+)(?:[,.](\d{1,3}))?)?\s*$/i,
       );
     if (!m) continue;
-    let name = m[1].trim(),
-      qty = m[3] ? Number(m[3].replace(/\s/g, "")) + Number(m[4]) / 1000 : 0,
-      pack = Number(name.match(/\*\s*(\d+)/)?.[1] || 1),
-      cat = /flash/i.test(name)
-        ? "FLASH"
-        : /липтон|lipton/i.test(name)
-          ? "LIPTON"
-          : /пиво|garage|somersby/i.test(name)
-            ? "BEER"
-            : "CSD";
-    rows.push({
+    const name = m[1].trim(),
+      info = productInfo(name),
+      qty = m[3]
+        ? Number(m[3].replace(/\s/g, "")) + (m[4] ? Number("0." + m[4]) : 0)
+        : 0;
+    if (!Number.isFinite(qty) || qty < 0 || info.pack < 1)
+      throw Error("Некорректное количество товара");
+    const row = {
       name,
       qty,
-      pack,
-      cat,
-      keg: /кега/i.test(m[2]),
-      bib: /биб/i.test(name),
-    });
+      pack: info.pack,
+      cat: info.cat,
+      keg: /кег|keg/i.test(m[2]) || info.keg,
+      bib: info.bib,
+      volume: info.volume,
+    };
+    row.id = stockKey(row);
+    if (seen.has(row.id)) throw Error("Повторяющаяся строка товара в отчёте");
+    seen.add(row.id);
+    rows.push(row);
   }
   return rows;
 }
+function stockSignature(rows) {
+  return JSON.stringify(
+    rows
+      .map((r) => [stockKey(r), r.qty, r.pack, Boolean(r.keg), Boolean(r.bib)])
+      .sort((a, b) => a[0].localeCompare(b[0])),
+  );
+}
 async function loadStock(file) {
-  let status = $("stockstatus");
+  const status = $("stockstatus");
   if (status) status.textContent = "Читаю отчёт…";
   try {
+    const data = await checkedBytes(file);
     let lines = [];
     if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
-      let pdfjs = await import(
+      const pdfjs = await import(
         "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs"
       );
       pdfjs.GlobalWorkerOptions.workerSrc =
         "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
-      let pdf = await pdfjs.getDocument({
-        data: new Uint8Array(await file.arrayBuffer()),
+      const pdf = await pdfjs.getDocument({
+        data: new Uint8Array(data),
+        isEvalSupported: false,
       }).promise;
-      for (let i = 1; i <= pdf.numPages; i++) {
-        let page = await pdf.getPage(i),
-          tc = await page.getTextContent(),
-          groups = [];
-        for (let item of tc.items) {
-          if (!item.str?.trim()) continue;
-          let y = item.transform[5],
-            g = groups.find((g) => Math.abs(g.y - y) < 2);
-          if (!g) {
-            g = { y, items: [] };
-            groups.push(g);
+      try {
+        if (pdf.numPages > 100) throw Error("Слишком много страниц");
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i),
+            tc = await page.getTextContent(),
+            groups = [];
+          for (const item of tc.items) {
+            if (!item.str?.trim()) continue;
+            let g = groups.find((g) => Math.abs(g.y - item.transform[5]) < 2);
+            if (!g) {
+              g = { y: item.transform[5], items: [] };
+              groups.push(g);
+            }
+            g.items.push(item);
           }
-          g.items.push(item);
+          for (const g of groups.sort((a, b) => b.y - a.y))
+            lines.push(
+              g.items
+                .sort((a, b) => a.transform[4] - b.transform[4])
+                .map((x) => x.str)
+                .join(" "),
+            );
         }
-        for (let g of groups.sort((a, b) => b.y - a.y))
-          lines.push(
-            g.items
-              .sort((a, b) => a.transform[4] - b.transform[4])
-              .map((x) => x.str)
-              .join(" "),
-          );
+      } finally {
+        await pdf.destroy();
       }
-    } else lines = (await file.text()).split(/\r?\n/);
-    let rows = parseStock(lines);
+    } else if (/\.(txt|csv)$/i.test(file.name) || file.type === "text/plain")
+      lines = new TextDecoder().decode(data).split(/\r?\n/);
+    else throw Error("Выберите складской PDF или TXT");
+    const rows = parseStock(lines);
     if (!rows.length)
-      throw Error("Не найдены строки остатков. Проверьте формат PDF.");
-    if (s.stockReport && JSON.stringify(s.stockReport.rows)!==JSON.stringify(rows)) {
-      s.stockPrevious = s.stockReport;
-      s.stockHistory=[...(s.stockHistory||[]),s.stockReport].slice(-60);
+      throw Error(
+        "Не найдены строки остатков. Нужен складской отчёт с текстовым слоем.",
+      );
+    if (
+      s.stockReport &&
+      stockSignature(s.stockReport.rows) === stockSignature(rows)
+    ) {
+      if (status)
+        status.textContent = "Этот отчёт уже загружен. Остатки не задвоены.";
+      return;
     }
-    let previous = s;
-    s = {
-      ...s,
-      stockReport: { name: file.name, rows, date: new Date().toISOString() },
+    const dm = file.name.match(/(\d{2})\.(\d{2})\.(20\d{2})/),
+      sourceDate = dm ? dm[3] + "-" + dm[2] + "-" + dm[1] : null;
+    if (
+      sourceDate &&
+      s.stockReport?.sourceDate &&
+      sourceDate < s.stockReport.sourceDate &&
+      !confirm("Дата склада раньше текущего отчёта. Заменить остатки?")
+    )
+      return;
+    const report = {
+      name: file.name,
+      rows,
+      date: new Date().toISOString(),
+      sourceDate,
     };
-    if (!save()) {
-      s = previous;
+    if (
+      !commitState({
+        ...s,
+        stockPrevious: s.stockReport || s.stockPrevious,
+        stockHistory: s.stockReport
+          ? [...(s.stockHistory || []), s.stockReport]
+          : s.stockHistory || [],
+        stockReport: report,
+      })
+    )
       throw Error("Импорт не сохранён");
-    }
     if (tab === 4) {
       render();
       $("stockstatus").textContent = "Распознано позиций: " + rows.length;
     }
   } catch (e) {
     if (status) status.textContent = "Ошибка: " + e.message;
-    else alert(e.message);
+    else alert("Ошибка: " + e.message);
   }
 }
 function stockPaste(e) {
@@ -1616,37 +1779,130 @@ async function deleteDoc(id) {
     listDocs();
   };
 }
-let clientEditIndex=Number.isInteger(restoredUI.client)&&s.clients[restoredUI.client]?.a===restoredUI.clientName?restoredUI.client:null;
-function clientOpen(i){clientEditIndex=i;render();window.scrollTo(0,0);}
-function clientSettings(){
- const x=s.clients[clientEditIndex],r={name:x.a,address:x.b||""};
- const t=routeMatch(s.detail?.shops||[],r.name,r.address),fm=(s.detail?.fit||[]).find(y=>t?.id&&String(y.id)===String(t.id))||routeMatch(s.detail?.fit||[],r.name,r.address);
- return '<section><button onclick="clientEditIndex=null;render()">← Клиенты</button><h2>'+esc(x.a)+'</h2><p>'+esc(x.b)+'</p>'+fitAdvice(r,t,fm,null)+'<label>Заметка</label><textarea id="clientmemo">'+esc(routeGetNote(r))+'</textarea><button onclick="clientSaveNote()">Сохранить заметку</button></section>';
+let clientEditIndex =
+  Number.isInteger(restoredUI.client) &&
+  s.clients[restoredUI.client]?.a === restoredUI.clientName
+    ? restoredUI.client
+    : null;
+function clientOpen(i) {
+  clientEditIndex = i;
+  render();
+  window.scrollTo(0, 0);
 }
-function clientSaveNote(){const x=s.clients[clientEditIndex];s.routeNotes??={};s.routeNotes[routeKey({name:x.a,address:x.b||""})]=$("clientmemo").value.trim();save();render();}
-function clientRows(q){return s.clients.map((r,i)=>({r,i})).filter(({r})=>(r.a+" "+r.b).toLowerCase().includes(q.toLowerCase())).map(({r,i})=>'<div class="task"><b>'+esc(r.a)+'</b><br>'+esc(r.b)+'<br><button onclick="clientOpen('+i+')">Настройки точки</button> <button onclick="del(\'clients\','+i+')">Удалить</button></div>').join("")||"Нет записей";}
+function clientSettings() {
+  const x = s.clients[clientEditIndex],
+    r = { name: x.a, address: x.b || "" };
+  const { t, fm } = resolveShop(r);
+  return (
+    '<section><button onclick="clientEditIndex=null;render()">← Клиенты</button><h2>' +
+    esc(x.a) +
+    "</h2><p>" +
+    esc(x.b) +
+    "</p>" +
+    fitAdvice(r, t, fm, null) +
+    '<label>Заметка</label><textarea id="clientmemo">' +
+    esc(routeGetNote(r)) +
+    '</textarea><button onclick="clientSaveNote()">Сохранить заметку</button></section>'
+  );
+}
+function clientSaveNote() {
+  const x = s.clients[clientEditIndex];
+  s.routeNotes ??= {};
+  s.routeNotes[noteKey({ name: x.a, address: x.b || "" })] =
+    $("clientmemo").value.trim();
+  save();
+  render();
+}
+function clientRows(q) {
+  return (
+    s.clients
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) =>
+        (r.a + " " + r.b).toLowerCase().includes(q.toLowerCase()),
+      )
+      .map(
+        ({ r, i }) =>
+          '<div class="task"><b>' +
+          esc(r.a) +
+          "</b><br>" +
+          esc(r.b) +
+          '<br><button onclick="clientOpen(' +
+          i +
+          ")\">Настройки точки</button> <button onclick=\"del('clients'," +
+          i +
+          ')">Удалить</button></div>',
+      )
+      .join("") || "Нет записей"
+  );
+}
 function filterClients(q) {
   $("clientlist").innerHTML = clientRows(q);
 }
-async function importClients() {
-  let f = $("clientfile").files[0];
-  if (!f) return alert("Выберите файл");
-  let rows = (await f.text())
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .map((x) => x.split(";").map((y) => y.trim()))
-    .filter((x) => x.length >= 2 && x[0] && x[0] !== "Название");
-  let n = 0;
-  for (let [a, address, ip] of rows) {
-    let b = address + (ip ? " · " + ip : "");
-    if (!s.clients.some((r) => r.a === a && r.b === b)) {
-      s.clients.push({ a, b, date: new Date().toLocaleDateString("ru-RU") });
-      n++;
-    }
+function parseClientsCSV(text) {
+  const rows = [];
+  let row = [],
+    cell = "",
+    quoted = false;
+  text = text.replace(/^\uFEFF/, "");
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      if (quoted && text[i + 1] === '"') {
+        cell += '"';
+        i++;
+      } else quoted = !quoted;
+    } else if (!quoted && (c === ";" || c === "\n" || c === "\r")) {
+      row.push(cell.trim());
+      cell = "";
+      if (c !== ";") {
+        if (row.some(Boolean)) rows.push(row);
+        row = [];
+        if (c === "\r" && text[i + 1] === "\n") i++;
+      }
+    } else cell += c;
   }
-  save();
-  render();
-  alert("Добавлено: " + n);
+  if (quoted) throw Error("Незакрытая кавычка в CSV");
+  row.push(cell.trim());
+  if (row.some(Boolean)) rows.push(row);
+  const data = rows.filter((r) => !/^название$/i.test(r[0]));
+  if (
+    !data.length ||
+    data.length > 10000 ||
+    data.some((r) => r.length < 2 || r.length > 3 || !r[0])
+  )
+    throw Error("Ожидается CSV: название; адрес; ИП (до 10 000 строк)");
+  return data.map(([a, address, ip]) => ({
+    a,
+    b: address + (ip ? " · " + ip : ""),
+  }));
+}
+async function importClients() {
+  const f = $("clientfile").files[0];
+  if (!f) return alert("Выберите файл");
+  try {
+    if (f.size > 5 * 1024 * 1024) throw Error("CSV превышает 5 МБ");
+    const rows = parseClientsCSV(await f.text()),
+      clients = [...s.clients];
+    let n = 0;
+    for (const row of rows) {
+      if (
+        !clients.some(
+          (r) =>
+            r.a.trim().toLowerCase() === row.a.toLowerCase() &&
+            r.b.trim().toLowerCase() === row.b.toLowerCase(),
+        )
+      ) {
+        clients.push({ ...row, date: new Date().toLocaleDateString("ru-RU") });
+        n++;
+      }
+    }
+    if (!commitState({ ...s, clients }))
+      throw Error("Не удалось сохранить клиентскую базу");
+    render();
+    alert("Добавлено: " + n);
+  } catch (e) {
+    alert("Ошибка импорта: " + e.message);
+  }
 }
 function updateKpi() {
   s.kpi.forEach((k, i) => {
@@ -1697,18 +1953,37 @@ function updatePay() {
   save();
   render();
 }
-function backup() {
-  let a = document.createElement("a");
-  a.href = URL.createObjectURL(
-    new Blob([JSON.stringify(s, null, 2)], { type: "application/json" }),
-  );
-  a.download = "mix-backup.json";
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+async function backup() {
+  try {
+    rememberView();
+    persistUI();
+    const value = {
+      ...s,
+      backupVersion: 3,
+      appVersion: APP_VERSION,
+      uiState: readUI(),
+      documents: await exportDocuments(),
+    };
+    const data = JSON.stringify(value, null, 2);
+    if (new Blob([data]).size > 100 * 1024 * 1024)
+      throw Error("Размер копии больше 100 МБ");
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(
+      new Blob([data], { type: "application/json" }),
+    );
+    link.download = "mix-backup.json";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  } catch (e) {
+    alert("Не удалось экспортировать копию: " + e.message);
+  }
 }
-
 function routeDate() {
-  return s.routeDay || new Date().toLocaleDateString("sv-SE");
+  return (
+    (typeof activeVisit !== "undefined" ? activeVisit?.day : null) ||
+    s.routeDay ||
+    new Date().toLocaleDateString("sv-SE")
+  );
 }
 function routeKey(r) {
   return r.name + "\u001f" + (r.address || "");
@@ -1814,23 +2089,33 @@ function routeNorm(x, keep = false) {
   if (!keep) t = t.replace(/^(магазин|маг)\.?\s+/, "");
   return t.replace(/cарлык/g, "сарлык").replace(/\s+/g, "");
 }
-function routeMatch(rows, name, address = "") {
-  const linked=s.fitLinks?.[routeNorm(name,true)+"|"+routeNorm(address,true)];
-  if(linked){const hits=rows.filter(t=>String(t.id)===linked);if(hits.length===1)return hits[0];}
-  if (address) {
-    let candidates = rows.filter((t) => routeNorm(t.name) === routeNorm(name)),
-      a = routeNorm(address, true);
-    let found = candidates.filter((t) =>
-      routeNorm(t.name.split("(").slice(1).join("("), true).includes(a),
+function routeMatch(rows, name, address = "", id = "") {
+  const linked =
+    normalizeId(id) ||
+    normalizeId(
+      s.fitLinks?.[routeNorm(name, true) + "|" + routeNorm(address, true)],
     );
-    if (found.length === 1) return found[0];
+  if (linked) {
+    const hits = rows.filter((t) => normalizeId(t.id) === linked);
+    return hits.length === 1 ? hits[0] : null;
   }
-  let exact = rows.filter(
+  let candidates = rows.filter((t) => routeNorm(t.name) === routeNorm(name));
+  if (address) {
+    const hits = candidates.filter((t) => sameAddress(shopAddress(t), address));
+    if (hits.length === 1) return hits[0];
+    if (hits.length > 1) return null;
+    // An address can resolve name formatting differences, but never an ambiguous address.
+    const addressHits = rows.filter((t) =>
+      sameAddress(shopAddress(t), address),
+    );
+    if (addressHits.length === 1) return addressHits[0];
+    if (candidates.some((t) => shopAddress(t))) return null;
+  }
+  const exact = candidates.filter(
     (t) => routeNorm(t.name, true) === routeNorm(name, true),
   );
   if (exact.length === 1) return exact[0];
-  let loose = rows.filter((t) => routeNorm(t.name) === routeNorm(name));
-  return loose.length === 1 ? loose[0] : null;
+  return candidates.length === 1 ? candidates[0] : null;
 }
 function routeWeekDay(d) {
   let day = routeDate(),
@@ -1845,8 +2130,9 @@ function routeFitValue(v) {
     : "Нет данных";
 }
 
-let routeFilter = "all",
-  routeQuery = "";
+let routeFilter = restoredUI.routeFilter || "all",
+  routeQuery =
+    typeof restoredUI.routeQuery === "string" ? restoredUI.routeQuery : "";
 function routeShift(n) {
   s.routeDay = monoDay(routeDate(), n);
   save();
@@ -1867,10 +2153,68 @@ function routeFitTile(label, v) {
     '"></i></div></div>'
   );
 }
-let activeVisit=restoredUI.visit||null;
-function visitStart(i){activeVisit={day:routeDate(),i,key:routeKey(routeRows(routeDate())[i])};render();window.scrollTo(0,0);}
-function visitEnd(v){const a=activeVisit;activeVisit=null;if(v&&a)routeStatus(a.i,v);else render();window.scrollTo(0,0);}
-function visitCurrent(){return activeVisit&&activeVisit.day===routeDate()&&routeRows(routeDate())[activeVisit.i]&&routeKey(routeRows(routeDate())[activeVisit.i])===activeVisit.key?activeVisit:null;}
+let activeVisit = s.activeVisit || restoredUI.visit || null;
+function visitStart(i) {
+  const day = routeDate(),
+    r = routeRows(day)[i];
+  if (!r) return;
+  const { t, fm } = resolveShop(r),
+    key = fitKey(r, t || fm);
+  s.fitChecks ??= {};
+  const checkKey = shelfHistoryKey(key, day);
+  if (!s.fitChecks[checkKey])
+    s.fitChecks[checkKey] = { ...fitSnapshot(key, day, s.fitChecks) };
+  activeVisit = {
+    day,
+    i,
+    key: routeKey(r),
+    shopKey: key,
+    id: Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8),
+    startedAt: new Date().toISOString(),
+  };
+  persistVisit();
+  render();
+  window.scrollTo(0, 0);
+}
+function visitCurrent() {
+  if (
+    !activeVisit ||
+    !validDate(activeVisit.day) ||
+    typeof activeVisit.key !== "string"
+  )
+    return null;
+  const i = routeRows(activeVisit.day).findIndex(
+    (r) => routeKey(r) === activeVisit.key,
+  );
+  if (i < 0) return null;
+  activeVisit.i = i;
+  return activeVisit;
+}
+function visitEnd(value) {
+  const a = visitCurrent();
+  if (a) {
+    const row = routeRows(a.day)[a.i],
+      shop =
+        a.shopKey || fitKey(row, resolveShop(row).t || resolveShop(row).fm);
+    s.visitHistory ??= [];
+    s.visitHistory.push({
+      ...structuredClone(a),
+      endedAt: new Date().toISOString(),
+      status: value || row.status || "Не посещено",
+      checks: structuredClone(fitSnapshot(shop, a.day, s.fitChecks)),
+    });
+    if (value) {
+      s.routes ??= {};
+      s.routes[a.day] ??= routeRows(a.day);
+      s.routes[a.day][a.i].status = value;
+    }
+  }
+  activeVisit = null;
+  s.activeVisit = null;
+  save();
+  render();
+  window.scrollTo(0, 0);
+}
 function routeCards() {
   let rows = routeRows(routeDate()),
     fit = s.detail?.fit || [],
@@ -1878,8 +2222,8 @@ function routeCards() {
   return (
     rows
       .map((r, i) => ({ r, i }))
-      .filter(({ r,i }) => {
-        if(visitCurrent())return i===activeVisit.i;
+      .filter(({ r, i }) => {
+        if (visitCurrent()) return i === activeVisit.i;
         let st = r.status || "Не посещено";
         return (
           (routeFilter === "all" ||
@@ -1892,10 +2236,7 @@ function routeCards() {
         );
       })
       .map(({ r, i }) => {
-        let t = routeMatch(shops, r.name, r.address),
-          fm =
-            (t?.id ? fit.find((x) => x.id === t.id) : null) ||
-            routeMatch(fit, r.name, r.address),
+        let { t, fm } = resolveShop(r),
           st = r.status || "Не посещено",
           note = routeGetNote(r);
         return (
@@ -1928,10 +2269,12 @@ function routeCards() {
               ? t.missing
                   .map((n) => '<span class="missingchip">' + esc(n) + "</span>")
                   .join(" ")
-              : '<span class="rtgreen">Все группы закрыты</span>'
+              : '<span class="rtgreen">Все группы были отмечены в отчёте</span>'
             : "<small>Нет однозначных данных</small>") +
           "</div></div>" +
-          (visitCurrent()?fitAdvice(r,t,fm,i):'<button onclick="visitStart('+i+')">Начать визит</button>') +
+          (visitCurrent()
+            ? fitAdvice(r, t, fm, i)
+            : '<button onclick="visitStart(' + i + ')">Начать визит</button>') +
           '<details class="rtdetails"><summary>Заметка и действия' +
           (note ? " · есть заметка" : "") +
           '</summary><textarea placeholder="Постоянная заметка: что обещал клиенту" id="rtnote' +
@@ -1963,8 +2306,13 @@ function routeRefresh() {
   }
 }
 function routeUI() {
-  if(visitCurrent())return '<div class="pagehead">Активный визит</div><section><button onclick="visitEnd()">← К маршруту</button></section><div id="routeCards">'+routeCards()+'</div><section><h3>Завершить визит</h3><button onclick="visitEnd(\'Посещено\')">Посещено</button> <button onclick="visitEnd(\'Без заказа\')">Без заказа</button> <button onclick="visitEnd(\'Закрыто\')">Закрыто</button></section>';
-  activeVisit=null;
+  if (visitCurrent())
+    return (
+      '<div class="pagehead">Активный визит</div><section><button onclick="visitEnd()">← К маршруту</button></section><div id="routeCards">' +
+      routeCards() +
+      "</div><section><h3>Завершить визит</h3><button onclick=\"visitEnd('Посещено')\">Посещено</button> <button onclick=\"visitEnd('Без заказа')\">Без заказа</button> <button onclick=\"visitEnd('Закрыто')\">Закрыто</button></section>"
+    );
+  activeVisit = null;
   let day = routeDate(),
     rows = routeRows(day),
     dow = new Date(day + "T12:00:00").getDay(),
@@ -2075,21 +2423,33 @@ function routeNoteKey(r) {
     same = s.clients.filter((x) => String(x.a).trim().toLowerCase() === name);
   return name + "\u001f" + (same.length > 1 ? r.address || "" : "");
 }
-function routeGetNote(r) {
-  let key = routeKey(r),
-    legacy = routeNoteKey(r);
-  return (
-    s.routeNotes?.[key] ??
-    s.routeNotes?.[legacy] ??
-    s.routeNotes?.[String(r.name).trim().toLowerCase() + "\u001f"] ??
-    ""
+function noteKey(r) {
+  const key = canonicalShelfKey(routeKey(r));
+  if (key.startsWith("shop:")) return key;
+  const same = s.clients.filter(
+    (x) =>
+      String(x.a).trim().toLowerCase() === String(r.name).trim().toLowerCase(),
   );
+  if (same.length === 1 && (!r.address || r.address === same[0].b))
+    return routeKey({ name: same[0].a, address: same[0].b });
+  return routeKey(r);
+}
+function routeGetNote(r) {
+  const key = noteKey(r),
+    notes = s.routeNotes || {};
+  for (const candidate of [key, routeKey(r), routeNoteKey(r)])
+    if (Object.hasOwn(notes, candidate)) return notes[candidate];
+  const aliases = Object.keys(notes).filter((k) => {
+    const [name, address = ""] = k.split("\u001f");
+    return k.includes("\u001f") && noteKey({ name, address }) === key;
+  });
+  return aliases.length === 1 ? notes[aliases[0]] : "";
 }
 function routeNote(i, v) {
   let r = routeRows(routeDate())[i];
   if (!r) return;
   s.routeNotes ??= {};
-  let k = routeKey(r);
+  let k = noteKey(r);
   s.routeNotes[k] = v.trim();
   save();
   render();
@@ -2110,7 +2470,7 @@ function monoDay(d, n = 0) {
   return t.toISOString().slice(0, 10);
 }
 function monoParse(html, year) {
-  let doc = new DOMParser().parseFromString(html, "text/html"),
+  let doc = new DOMParser().parseFromString(safeReportHTML(html), "text/html"),
     m = doc
       .querySelector("#Table2")
       ?.textContent.match(/за\s+(\d{2})\.(\d{2})/);
@@ -2257,11 +2617,11 @@ function monoUI() {
       b.date.localeCompare(a.date),
     );
   return (
-    '<div class="pagehead">Продажи и прогноз</div><section><h3>Monolit · ежедневные отчёты</h3><input type="file" accept=".html,.htm" onchange="if(this.files[0])this.files[0].text().then(monoLoad)"><button onclick="importShortcut()">Из буфера WhatsApp</button><textarea id="shortcutpaste" placeholder="Вставьте Base64"></textarea><button onclick="importShortcut(true)">Обработать</button><p id="shortcutstatus"></p><label>Дата утренней детализации (подтвердите после загрузки KPI)</label><input type="date" value="' +
+    '<div class="pagehead">Продажи и прогноз</div><section><h3>Monolit · ежедневные отчёты</h3><input type="file" accept=".html,.htm" onchange="if(this.files[0])loadMonolitFile(this.files[0])"><button onclick="importShortcut()">Из буфера WhatsApp</button><textarea id="shortcutpaste" placeholder="Вставьте Base64"></textarea><button onclick="importShortcut(true)">Обработать</button><p id="shortcutstatus"></p><label>Дата утренней детализации (подтвердите после загрузки KPI)</label><input type="date" value="' +
     esc(d) +
     '" onchange="s.forecastDate=this.value;save();render()"><small>Период KPI: ' +
     esc(s.detail?.period || "не загружен") +
-    ". Заявка → отгрузка +1 день → детализация +2 дня. Sell-in включён.</small>" +
+    ". Условный сценарий: отгрузка +1 день, детализация +2 дня. Это допущение прогноза, а не подтверждённое правило KPI. Sell-in включён в объём Monolit.</small>" +
     (d &&
     s.detail?.period &&
     d.slice(5, 7) + "." + d.slice(0, 4) !== s.detail.period
@@ -2364,95 +2724,7 @@ function monoUI() {
 }
 
 if (!s.weekRoute) {
-  s.weekRoute = {
-    1: [
-      "Жан Маркет",
-      "Ажар",
-      "Алмас",
-      "Айзере",
-      "Дос Маркет",
-      "Автолюкс",
-      "Турар",
-      "Сабр",
-      "Сарлык",
-      "Нурислам",
-      "Аружан",
-      "RIZIQ",
-    ],
-    2: [
-      "Лаура",
-      "Ануар",
-      "Золушка",
-      "Гулзере",
-      "Ольга",
-      "Асель",
-      "Бастау+",
-      "Мирас",
-      "Лотос",
-      "Улдана",
-      "Сат",
-      "Моника",
-    ],
-    3: [
-      "магазин Актоты",
-      "Архат",
-      "Айгерим",
-      "Салима",
-      "Айым",
-      "Айша",
-      "Эльнура",
-      "Авто Амир",
-      "маг Актоты",
-      "Зере",
-      "Аялы",
-      "Авто Сити",
-      "Хозтовары",
-      "Барс",
-    ],
-    4: [
-      "Жан Маркет",
-      "Ажар",
-      "Алмас",
-      "Айзере",
-      "Дос Маркет",
-      "Автолюкс",
-      "Турар",
-      "Сабр",
-      "Сарлык",
-      "Нурислам",
-      "Аружан",
-      "RIZIQ",
-    ],
-    5: [
-      "Лаура",
-      "Ануар",
-      "Золушка",
-      "Гулзере",
-      "Ольга",
-      "Асель",
-      "Бастау+",
-      "Мирас",
-      "Лотос",
-      "Улдана",
-      "Сат",
-      "Моника",
-    ],
-    6: [
-      "магазин Актоты",
-      "Архат",
-      "Айгерим",
-      "Салима",
-      "Айым",
-      "Айша",
-      "Эльнура",
-      "Авто Амир",
-      "маг Актоты",
-      "Зере",
-      "Авто Сити",
-      "Хозтовары",
-      "Барс",
-    ],
-  };
+  s.weekRoute = {};
   save();
 }
 
@@ -2547,7 +2819,7 @@ function homeActions() {
         ({ r, t }) =>
           '<div class="task"><b>' +
           esc(r.name) +
-          "</b><br><small>Проверить Flash: " +
+          "</b><br><small>По прошлой детализации проверить Flash: " +
           esc(t.missing.join(", ")) +
           "</small></div>",
       )
@@ -2593,11 +2865,23 @@ function fitRules(type, beer) {
       rules.push({ key, label, idx, max, items });
   const item = (label, re, count = 1) => ({ label, re, count });
   const pepsi = (v) => new RegExp("pepsi(?!.*zero).*" + v, "i");
-  const lip = (taste,v) => {
- const aliases={"манго":"(?:манго|mango)","персик":"(?:персик|peach)","лимон":"(?:лимон|lemon)","малина":"(?:малин|raspberry)"};
- const volume=v==="1[.,]0"?"1(?:[.,]0)?":v;
- return new RegExp("(?=.*(?:lipton|липтон))(?=.*"+(aliases[taste]||taste)+")(?=.*(?:^|[^\\d.,])"+volume+"(?=\\s*(?:л|l|литр|[*×xх]|$)))","i");
- };
+  const lip = (taste, v) => {
+    const aliases = {
+      манго: "(?:манго|mango)",
+      персик: "(?:персик|peach)",
+      лимон: "(?:лимон|lemon)",
+      малина: "(?:малин|raspberry)",
+    };
+    const volume = v === "1[.,]0" ? "1(?:[.,]0)?" : v;
+    return new RegExp(
+      "(?=.*(?:lipton|липтон))(?=.*" +
+        (aliases[taste] || taste) +
+        ")(?=.*(?:^|[^\\d.,])" +
+        volume +
+        "(?=\\s*(?:л|l|литр|[*×xх]|$)))",
+      "i",
+    );
+  };
   const flash = [
     item("Flash Ultra 0,43 / 0,45 л", /flash.*ultra.*0[.,]4[35]/i),
     item(
@@ -2605,11 +2889,7 @@ function fitRules(type, beer) {
       /flash.*energy(?!.*(?:ultra|bubble|exotic|mojito|pomegranate|night|peach|morning|berry|tropical|mango|apple)).*0[.,]4[35]/i,
     ),
     item("Flash Ultra 0,25 л", /flash.*ultra.*0[.,]25/i),
-    item(
-      "Два дополнительных вкуса Flash",
-      /flash.*(?:bubble|exotic|mojito|pomegranate|morning cakes)/i,
-      2,
-    ),
+    item("Два дополнительных вкуса Flash", /flash/i, 2),
   ];
   if (type === "pepsi" || type === "flex") {
     add("csd", "CSD", 11, 40, [
@@ -2620,7 +2900,6 @@ function fitRules(type, beer) {
         ),
       ),
       item("Mirinda 1 л", /mirinda.*1(?:[.,]0)?\s*(?:л|l|\*)/i),
-      item("7UP 1 л", /7up.*1(?:[.,]0)?\s*(?:л|l|\*)/i),
     ]);
     add("lipton", "Lipton", 12, 20, [
       item("Lipton персик 1 л", lip("персик", "1[.,]0")),
@@ -2634,11 +2913,15 @@ function fitRules(type, beer) {
     ]);
     add("flash", "Flash", 15, 20, flash);
     add("focusNon", "Focus + NPD", 13, 10, [
-      item("Pepsi Zero 0,5 л", /pepsi.*zero.*0[.,]5/i),
-      item("Pepsi Zero 0,45 л", /pepsi.*zero.*0[.,]45/i),
+      {
+        ...item("Pepsi Zero · объём уточнить", /pepsi.*zero.*0[.,](?:5|45)/i),
+        unconfirmed: true,
+      },
       item("7UP 0,45 л", /7up.*0[.,]45/i),
-      item("Mirinda 0,45 л", /mirinda.*0[.,]45/i),
-      item("Mirinda 0,5 л", /mirinda.*0[.,]5/i),
+      {
+        ...item("Mirinda · объём уточнить", /mirinda.*0[.,](?:5|45)/i),
+        unconfirmed: true,
+      },
       item("Lipton лимон 0,5 л", lip("лимон", "0[.,]5")),
       item("Lipton персик 0,5 л", lip("персик", "0[.,]5")),
     ]);
@@ -2676,31 +2959,65 @@ function fitRules(type, beer) {
         "Карлсберг банка 0,43 / 0,45 л",
         /(?:carlsberg|карлсберг)(?!.*(?:безалкоголь|0[.,]0)).*(?:бан|can).*0[.,]4[35]/i,
       ),
-      item("Хольстен Light банка 0,43 л", /(?:holsten|хольстен).*light.*бан.*0[.,]43/i),
+      item(
+        "Хольстен Light банка 0,43 л",
+        /(?:holsten|хольстен).*light.*бан.*0[.,]43/i,
+      ),
     ]);
     add("afb", "AFB", 3, beer === "yes" ? 11 : 5, [
       item("Жатецкий Гусь №0", /жатецкий.*№0/i),
     ]);
     if (beer === "yes") {
       add("npd", "NPD", 2, 15, [
-        item("Garage Raspberry Currant", /garage.*raspberry/i),
-        item("Garage Hardcore Soju", /garage.*soju/i),
+        item(
+          "Garage Raspberry Currant",
+          /(?=.*garage)(?=.*raspberry.*currant)(?=.*(?:бут|glass|bottle))/i,
+        ),
+        item(
+          "Garage Hardcore Soju",
+          /(?=.*garage)(?=.*soju)(?=.*(?:бан|can))/i,
+        ),
       ]);
       add("focusBeer", "Beer Focus", 1, 20, [
- item("Carlsberg бутылка", /(?:carlsberg|карлсберг)(?!.*(?:0[.,]0|безалкоголь)).*бут/i),
- item("Holsten Light бутылка", /(?:holsten|хольстен).*light.*бут/i),
- item("1664 Blanc бутылка", /(?:1664|кроненбург|kronenbourg).*бут/i),
- item("Garage Black Cherry 0,4 л", /garage.*black cherry.*бут/i),
- item("1664 Blanc банка", /(?:1664|кроненбург|kronenbourg).*бан/i),
- item("Holsten Premium банка", /(?:holsten|хольстен).*(?:premium|pilsener|pilsner|пилс|премиум).*бан/i),
- item("Garage Hardcore Mango 0,43 л", /garage.*mango.*бан/i),
- item("Жатецкий Гусь мягкое банка", /(?:жатецкий|zatecky).*(?:мягк|myagk).*бан/i),
- item("Somersby Blackberry 0,43 л", /somersby.*blackberry/i),
- item("Holsten Premium бутылка", /(?:holsten|хольстен).*(?:premium|pilsener|pilsner|пилс|премиум).*бут/i),
- ]);
+        item(
+          "Carlsberg бутылка",
+          /(?:carlsberg|карлсберг)(?!.*(?:0[.,]0|безалкоголь)).*бут/i,
+        ),
+        item("Holsten Light бутылка", /(?:holsten|хольстен).*light.*бут/i),
+        item("1664 Blanc бутылка", /(?:1664|кроненбург|kronenbourg).*бут/i),
+        item("Garage Black Cherry 0,4 л", /garage.*black cherry.*бут/i),
+        item("1664 Blanc банка", /(?:1664|кроненбург|kronenbourg).*бан/i),
+        item(
+          "Holsten Premium банка",
+          /(?:holsten|хольстен).*(?:premium|pilsener|pilsner|пилс|премиум).*бан/i,
+        ),
+        item("Garage Hardcore Mango 0,43 л", /garage.*mango.*бан/i),
+        item(
+          "Жатецкий Гусь мягкое банка",
+          /(?:жатецкий|zatecky).*(?:мягк|myagk).*бан/i,
+        ),
+        item("Somersby Blackberry 0,43 л", /somersby.*blackberry/i),
+        item(
+          "Holsten Premium бутылка",
+          /(?:holsten|хольстен).*(?:premium|pilsener|pilsner|пилс|премиум).*бут/i,
+        ),
+      ]);
     }
   }
-  return rules;
+  return rules.map((g) => ({
+    ...g,
+    items: g.items.map((x) => {
+      const p = productInfo(x.label);
+      return {
+        ...x,
+        brand: p.brand || null,
+        flavor: x.count > 1 ? null : p.flavor || null,
+        volume: x.count > 1 || x.label.includes("/") ? null : p.volume,
+        container: p.container || null,
+        flavors: x.count > 1 && x.label.includes("дополнительных"),
+      };
+    }),
+  }));
 }
 function fitCriterion(fm, g) {
   const patterns = {
@@ -2725,18 +3042,17 @@ function skuKey(name) {
 }
 function fitMissing(group, seen, known, stock) {
   return group.items.flatMap((item) => {
-    const regional = group.key==="focusBeer" && /региональн/.test(item.label);
-    const have = regional ? 0 : new Set(seen.filter((n) => item.re.test(n)).map(skuKey)).size,
+    const regional = group.key === "focusBeer" && /региональн/.test(item.label);
+    const have = regional
+        ? 0
+        : new Set(seen.filter((n) => item.re.test(n)).map(skuKey)).size,
       need = Math.max(0, item.count - have);
     if (!need) return [];
     const names = known.filter(
       (n) => item.re.test(n) && !seen.some((h) => skuKey(h) === skuKey(n)),
     );
     const candidates = stock
-      .filter(
-        (r) =>
-          item.re.test(r.name),
-      )
+      .filter((r) => item.re.test(r.name))
       .sort((a, b) => b.qty - a.qty);
     return [
       {
@@ -2748,7 +3064,13 @@ function fitMissing(group, seen, known, stock) {
         known: names.length > 0,
         stocks: candidates.slice(0, 5),
         need,
-        choices: item.count>1 ? candidates.filter(r=>r.qty>0&&!seen.some(h=>skuKey(h)===skuKey(r.name))) : [],
+        choices:
+          item.count > 1
+            ? candidates.filter(
+                (r) =>
+                  r.qty > 0 && !seen.some((h) => skuKey(h) === skuKey(r.name)),
+              )
+            : [],
       },
     ];
   });
@@ -2777,7 +3099,13 @@ function fitSetKey(key, k, v) {
   save();
   render();
   document.querySelectorAll("details[data-fit-key]").forEach((el) => {
-    if (el.dataset.fitKey === key) {el.open = true; if(k==="counts") {const d=el.querySelector("details");if(d)d.open=true;}}
+    if (el.dataset.fitKey === key) {
+      el.open = true;
+      if (k === "counts") {
+        const d = el.querySelector("details");
+        if (d) d.open = true;
+      }
+    }
   });
 }
 
@@ -2799,242 +3127,511 @@ function equipmentModes(eq) {
   const beer = ["1d", "2d", "yes"].includes(beerDoors) ? "yes" : beerDoors;
   return { non, beerDoors, flashHO, type, beer };
 }
-function fitEquipmentCount(key,k,v){
- const eq=s.fitEquipment?.[key]||{};
- const counts={...(eq.counts||{})};
- if(v==="")delete counts[k];else counts[k]=Math.max(0,Math.min(4,Math.floor(Number(v)||0)));
- fitSetKey(key,"counts",counts);
+function fitEquipmentCount(key, k, v) {
+  const eq = s.fitEquipment?.[key] || {};
+  const counts = { ...(eq.counts || {}) };
+  if (v === "") delete counts[k];
+  else counts[k] = Math.max(0, Math.min(4, Math.floor(Number(v) || 0)));
+  fitSetKey(key, "counts", counts);
 }
-function fitCountsUI(key,eq){
- const counts=eq.counts||{};
- return '<details><summary>Количество холодильников и состояние</summary><p><small>Не проверено — неизвестно. Нет — подтверждено отсутствие. Ремонт отдельно.</small></p>'+[["beer1","Пиво 1Д"],["beer2","Пиво 2Д"],["pepsi1","Pepsi 1Д"],["pepsi2","Pepsi 2Д"],["flex","Flex 400"],["lipton","Lipton"],["flash","Flash"],["repair","В ремонте"]].map(([k,n])=>'<label>'+n+'</label><select onchange="fitEquipmentCount('+esc(JSON.stringify(key))+',&quot;'+k+'&quot;,this.value)">'+[["","Не проверено"],["0","Нет"],...Array.from({length:4},(_,i)=>[String(i+1),String(i+1)+" шт."])].map(([v,l])=>'<option value="'+v+'" '+(String(counts[k]??"")===v?"selected":"")+'>'+l+'</option>').join("")+'</select>').join("")+'<p><small>Количество — инвентаризация. Для правил FIT подтвердите типы в списках выше.</small></p></details>';
-}
-function fitOrderHint(st){
- if(!st||st.qty<=0)return "";
- const m=st.name.match(/(\d+[.,]\d+|\d+)\s*(?:л\s*)?[*×xх]\s*\d+/i);
- if(!m)return "";
- const vol=Number(m[1].replace(",","."));
- if(!(vol>0&&vol<=5))return "";
- const qty=Math.ceil(1/vol);
- return st.qty>=qty?" · пробный заказ "+qty+" шт. (гипотеза 1 л, не гарантия FIT)":" · недостаточно для пробного заказа";
+function fitCountsUI(key, eq) {
+  const counts = eq.counts || {};
+  return (
+    "<details><summary>Количество холодильников и состояние</summary><p><small>Не проверено — неизвестно. Нет — подтверждено отсутствие. Ремонт отдельно.</small></p>" +
+    [
+      ["beer1", "Пиво 1Д"],
+      ["beer2", "Пиво 2Д"],
+      ["pepsi1", "Pepsi 1Д"],
+      ["pepsi2", "Pepsi 2Д"],
+      ["flex", "Flex 400"],
+      ["lipton", "Lipton"],
+      ["flash", "Flash"],
+      ["repair", "В ремонте"],
+    ]
+      .map(
+        ([k, n]) =>
+          "<label>" +
+          n +
+          '</label><select onchange="fitEquipmentCount(' +
+          esc(JSON.stringify(key)) +
+          ",&quot;" +
+          k +
+          '&quot;,this.value)">' +
+          [
+            ["", "Не проверено"],
+            ["0", "Нет"],
+            ...Array.from({ length: 4 }, (_, i) => [
+              String(i + 1),
+              String(i + 1) + " шт.",
+            ]),
+          ]
+            .map(
+              ([v, l]) =>
+                '<option value="' +
+                v +
+                '" ' +
+                (String(counts[k] ?? "") === v ? "selected" : "") +
+                ">" +
+                l +
+                "</option>",
+            )
+            .join("") +
+          "</select>",
+      )
+      .join("") +
+    "<p><small>Количество — инвентаризация. Для правил FIT подтвердите типы в списках выше.</small></p></details>"
+  );
 }
 
-function fitLink(name,address,id){
- const old=routeKey({name,address});
- s.fitLinks??={};
- const key=routeNorm(name,true)+"|"+routeNorm(address,true);
- if(id){s.fitLinks[key]=id;s.fitEquipment??={};if(s.fitEquipment[old]&&!s.fitEquipment["shop:"+id])s.fitEquipment["shop:"+id]={...s.fitEquipment[old]};}
- else delete s.fitLinks[key];
- save();render();
+function fitLink(name, address, id) {
+  const old = routeKey({ name, address });
+  s.fitLinks ??= {};
+  const key = routeNorm(name, true) + "|" + routeNorm(address, true);
+  if (id) {
+    s.fitLinks[key] = id;
+    s.fitEquipment ??= {};
+    if (s.fitEquipment[old] && !s.fitEquipment["shop:" + id])
+      s.fitEquipment["shop:" + id] = { ...s.fitEquipment[old] };
+  } else delete s.fitLinks[key];
+  save();
+  render();
 }
-function fitFacing(g,label,type,beerDoors){
- const l=label.toLowerCase();
- if(g.key==="national"){
- if(beerDoors==="none")return "OSA";
- const n=beerDoors==="1d"?[4,2,3,4,1,2]:beerDoors==="2d"?[6,3,4,7,2,3]:null;
- if(!n)return "";
- const i=["большая","крепкое","экспортное","классический","карлсберг","хольстен"].findIndex(x=>l.includes(x));
- return i<0?"":n[i]+" фейс.";
- }
- if(g.key==="csd"||g.key==="lipton"){
- if(type==="flash"||type==="none")return "OSA";
- if(g.key==="lipton")return "1 фейс";
- if(l==="pepsi 1 л")return (type==="flex"?4:6)+" фейс.";
- if(l==="pepsi 0,5 л")return "3 фейс.";
- return "1 фейс";
- }
- if(g.key==="flash"){
- if(type==="none")return "2 SKU по OSA";
- if(l.includes("дополнительных"))return "2 SKU × 1 фейс";
- return l.includes("ultra")&&!l.includes("0,25")?"2 фейс.":"1 фейс";
- }
- return "";
+function fitFacing(g, label, type, beerDoors) {
+  const l = label.toLowerCase();
+  if (g.key === "national") {
+    if (beerDoors === "none") return "OSA";
+    const n =
+      beerDoors === "1d"
+        ? [4, 2, 3, 4, 1, 2]
+        : beerDoors === "2d"
+          ? [6, 3, 4, 7, 2, 3]
+          : null;
+    if (!n) return "";
+    const i = [
+      "большая",
+      "крепкое",
+      "экспортное",
+      "классический",
+      "карлсберг",
+      "хольстен",
+    ].findIndex((x) => l.includes(x));
+    return i < 0 ? "" : n[i] + " фейс.";
+  }
+  if (g.key === "csd" || g.key === "lipton") {
+    if (type === "flash" || type === "none") return "OSA";
+    if (g.key === "lipton") return "1 фейс";
+    if (l === "pepsi 1 л") return (type === "flex" ? 4 : 6) + " фейс.";
+    if (l === "pepsi 0,5 л") return "3 фейс.";
+    return "1 фейс";
+  }
+  if (g.key === "flash") {
+    if (type === "none") return "2 SKU по OSA";
+    if (l.includes("дополнительных")) return "2 SKU × 1 фейс";
+    return l.includes("ultra") && !l.includes("0,25") ? "2 фейс." : "1 фейс";
+  }
+  return "";
 }
-function fitPrevious(key,day,store){
- let best=null;
- for(const [k,checks] of Object.entries(store||{})){
- let pair;try{pair=JSON.parse(k)}catch{continue}
- if(Array.isArray(pair)&&pair[0]===key&&pair[1]<day&&(!best||pair[1]>best.day))best={day:pair[1],checks};
- }
- return best;
+function canonicalShelfKey(key) {
+  if (String(key).startsWith("shop:")) return key;
+  const [name, address = ""] = String(key).split("\u001f");
+  const { t, fm } = resolveShop({ name, address });
+  return fitKey({ name, address }, t || fm);
 }
-function fitSnapshot(key,day,store){
- return store?.[JSON.stringify([key,day])]??fitPrevious(key,day,store)?.checks??{};
+function fitPrevious(key, day, store) {
+  let best = null;
+  for (const [record, checks] of Object.entries(store || {})) {
+    let pair;
+    try {
+      pair = JSON.parse(record);
+    } catch {
+      continue;
+    }
+    if (
+      Array.isArray(pair) &&
+      canonicalShelfKey(pair[0]) === key &&
+      validDate(pair[1]) &&
+      pair[1] < day &&
+      (!best || pair[1] > best.day)
+    )
+      best = { day: pair[1], checks };
+  }
+  return best;
 }
-function fitCheck(key,day,sku,value){
- s.fitChecks??={};const k=JSON.stringify([key,day]);s.fitChecks[k]??={...fitSnapshot(key,day,s.fitChecks)};if(value==="")delete s.fitChecks[k][sku];else s.fitChecks[k][sku]=value;save();const y=window.scrollY;render();window.scrollTo(0,y);
+function fitSnapshot(key, day, store) {
+  const exact = store?.[shelfHistoryKey(key, day)];
+  if (exact !== undefined) return exact;
+  const legacy = Object.entries(store || {}).find(([record]) => {
+    try {
+      const pair = JSON.parse(record);
+      return pair[1] === day && canonicalShelfKey(pair[0]) === key;
+    } catch {
+      return false;
+    }
+  });
+  return legacy?.[1] ?? fitPrevious(key, day, store)?.checks ?? {};
 }
-function fitCheckButtons(key,day,sku){
- return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0">'+[["yes","✓ Есть","#166534"],["no","✕ Нет","#991b1b"]].map(([v,l,bg])=>'<button type="button" style="background:'+bg+';color:white;min-height:44px" onclick="fitCheck('+[key,day,sku,v].map(x=>esc(JSON.stringify(x))).join(",")+')">'+l+'</button>').join("")+'</div>';
+function fitCheck(key, day, sku, value) {
+  if (!validDate(day) || !["yes", "no", ""].includes(value)) return;
+  s.fitChecks ??= {};
+  const k = shelfHistoryKey(key, day);
+  const next = { ...fitSnapshot(key, day, s.fitChecks) };
+  if (value === "") delete next[sku];
+  else next[sku] = value;
+  if (!commitState({ ...s, fitChecks: { ...s.fitChecks, [k]: next } })) return;
+  render();
 }
-function fitCheckedRow(key,day,x){
- return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0"><span style="flex:1">'+esc(x.name)+'</span><button class="secondary" type="button" onclick="fitCheck('+[key,day,x.sku,""].map(v=>esc(JSON.stringify(v))).join(",")+')">Отменить</button></div>';
+function fitCheckButtons(key, day, sku) {
+  return (
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0">' +
+    [
+      ["yes", "✓ Есть", "#166534"],
+      ["no", "✕ Нет", "#991b1b"],
+    ]
+      .map(
+        ([v, l, bg]) =>
+          '<button type="button" style="background:' +
+          bg +
+          ';color:white;min-height:44px" onclick="fitCheck(' +
+          [key, day, sku, v].map((x) => esc(JSON.stringify(x))).join(",") +
+          ')">' +
+          l +
+          "</button>",
+      )
+      .join("") +
+    "</div>"
+  );
 }
-function fitOrderList(key,day,order){
- const groups={};
- for(const x of order)(groups[x.brand]??=[]).push(x);
- const short=x=>x.name.replace(/^(?:Пиво|Напиток|Пивной напиток|Чай черный|Чай зеленый)\s+/i,"").replace(/^(?:Seth&Riley['’]?s\s+)?(?:Flash(?: Up)?(?: Energy)?|Garage|Somersby|Lipton|Липтон|Pepsi|Mirinda|7UP|Holsten|Хольстен|Carlsberg|Карлсберг|Жатецкий Гусь|Большая Кружка|1664 Blanc)\s*/i,"").replace(/\s*т\/у\s*/gi," ").replace(/\s*\*\s*\d+.*$/," л").replace(/\s+/g," ").trim()||x.name;
- return Object.entries(groups).sort(([a],[b])=>a.localeCompare(b,"ru")).map(([brand,rows])=>'<div style="margin:10px 0"><div style="font-weight:800;font-size:15px;padding:5px 0">'+esc(brand)+'</div>'+rows.map(x=>'<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #64748b33"><span style="flex:1;font-size:16px;line-height:1.3">'+esc(short(x))+'</span><button type="button" class="secondary" aria-label="Вернуть в проверку" style="min-width:36px;min-height:36px;padding:4px 8px" onclick="fitCheck('+[key,day,x.sku,""].map(v=>esc(JSON.stringify(v))).join(",")+')">↶</button></div>').join("")+'</div>').join("");
+function fitCheckedRow(key, day, x) {
+  return (
+    '<div style="display:flex;align-items:center;gap:8px;padding:8px 0"><span style="flex:1">' +
+    esc(x.name) +
+    '</span><button class="secondary" type="button" onclick="fitCheck(' +
+    [key, day, x.sku, ""].map((v) => esc(JSON.stringify(v))).join(",") +
+    ')">Отменить</button></div>'
+  );
 }
-function fitOrderBrand(name){
- return [/большая кружка/i,/жатецкий|zatecky/i,/carlsberg|карлсберг/i,/holsten|хольстен/i,/garage/i,/somersby/i,/1664|кроненбург/i,/pepsi/i,/7up/i,/mirinda/i,/lipton/i,/flash/i].map((re,i)=>re.test(name)?["Большая Кружка","Жатецкий Гусь","Carlsberg","Holsten","Garage","Somersby","1664 Blanc","Pepsi","7UP","Mirinda","Lipton","Flash"][i]:null).find(Boolean)||"Другие";
+function fitOrderList(key, day, order) {
+  const groups = {};
+  for (const row of order) (groups[row.brand] ??= []).push(row);
+  return Object.entries(groups)
+    .sort(([a], [b]) => a.localeCompare(b, "ru"))
+    .map(
+      ([brand, rows]) =>
+        '<div class="order-brand"><b>' +
+        esc(brand) +
+        "</b>" +
+        rows
+          .map(
+            (row) =>
+              '<div class="order-row"><span>' +
+              esc(compactProduct(row.name)) +
+              '</span><button type="button" aria-label="Вернуть в проверку" onclick="fitCheck(' +
+              [key, day, row.sku, ""]
+                .map((v) => esc(JSON.stringify(v)))
+                .join(",") +
+              ')">↶</button></div>',
+          )
+          .join("") +
+        "</div>",
+    )
+    .join("");
+}
+function compactProduct(name) {
+  const p = productInfo(name),
+    flavor =
+      {
+        lemon: "Лимон",
+        peach: "Персик",
+        raspberry: "Малина",
+        mango: p.brand === "Garage" ? "Hardcore Mango" : "Манго и маракуйя",
+        "raspberry currant": "Hard Raspberry Currant",
+        "black cherry": "Hard Black Cherry",
+        soju: "Hardcore Soju",
+        blackberry: "Blackberry",
+        "strawberry kiwi": "Strawberry-Kiwi",
+        light: "Light",
+        pilsener: "Pilsener",
+        blanc: "Blanc",
+        zero: "Безалкогольное",
+      }[p.flavor] ||
+      flashFlavorLabel(p.flavor) ||
+      (p.brand === "Pepsi" ? "Cola" : p.brand || name);
+  return (
+    flavor +
+    (p.volume ? " · " + String(p.volume).replace(".", ",") + " л" : "") +
+    (p.container
+      ? " · " +
+        ({ can: "банка", bottle: "бутылка", pet: "PET" }[p.container] ||
+          p.container)
+      : "") +
+    " · " +
+    p.pack +
+    " шт./уп."
+  );
+}
+function fitOrderBrand(name) {
+  return (
+    [
+      /большая кружка/i,
+      /жатецкий|zatecky/i,
+      /carlsberg|карлсберг/i,
+      /holsten|хольстен/i,
+      /garage/i,
+      /somersby/i,
+      /1664|кроненбург/i,
+      /pepsi/i,
+      /7up/i,
+      /mirinda/i,
+      /lipton/i,
+      /flash/i,
+    ]
+      .map((re, i) =>
+        re.test(name)
+          ? [
+              "Большая Кружка",
+              "Жатецкий Гусь",
+              "Carlsberg",
+              "Holsten",
+              "Garage",
+              "Somersby",
+              "1664 Blanc",
+              "Pepsi",
+              "7UP",
+              "Mirinda",
+              "Lipton",
+              "Flash",
+            ][i]
+          : null,
+      )
+      .find(Boolean) || "Другие"
+  );
 }
 function fitAdvice(r, t, fm, i) {
-  let key = fitKey(r, t || fm),
+  if (!t && fm)
+    t =
+      (s.detail?.shops || []).find(
+        (x) => normalizeId(x.id) === normalizeId(fm.id),
+      ) || null;
+  const key = fitKey(r, t || fm),
     eq =
       s.fitEquipment?.[key] ||
       s.fitEquipment?.[routeKey(r)] ||
       fitLegacyEquipment(r),
     { non, beerDoors, flashHO, type, beer } = equipmentModes(eq),
     day = i === null ? new Date().toLocaleDateString("sv-SE") : routeDate(),
-    valid = s.detail?.period === day.slice(5, 7) + "." + day.slice(0, 4),
-    select = (k, opts, v) =>
-      '<select onchange="fitSetKey(' +
-      esc(JSON.stringify(key)) +
-      ",&quot;" +
-      k +
-      '&quot;,this.value)">' +
+    valid = s.detail?.period === day.slice(5, 7) + "." + day.slice(0, 4);
+  const select = (field, options, value) =>
+    "<label>" +
+    { non: "ХО NonAlco", beer: "Пивное ХО", flash: "Отдельное ХО Flash" }[
+      field
+    ] +
+    '</label><select onchange="fitSetKey(' +
+    esc(JSON.stringify(key)) +
+    ",&quot;" +
+    field +
+    '&quot;,this.value)">' +
+    options
+      .map(
+        ([v, text]) =>
+          '<option value="' +
+          v +
+          '" ' +
+          (v === value ? "selected" : "") +
+          ">" +
+          text +
+          "</option>",
+      )
+      .join("") +
+    "</select>";
+  const equipment =
+    '<details data-panel="equipment"><summary>Настроить оборудование</summary>' +
+    select(
+      "non",
+      [
+        ["", "Не определено"],
+        ["pepsi1", "Pepsi 1Д"],
+        ["flex", "Flex 400"],
+        ["pepsi2", "Pepsi 2Д"],
+        ["lipton", "Lipton"],
+        ["pepsi", "Pepsi / Lipton (уточнить)"],
+        ["none", "Нет Pepsi / Lipton"],
+      ],
+      non === "flash" ? "none" : non,
+    ) +
+    select(
+      "beer",
+      [
+        ["", "Не определено"],
+        ["1d", "Пиво 1Д"],
+        ["2d", "Пиво 2Д"],
+        ["yes", "Есть (уточнить двери)"],
+        ["none", "Нет"],
+      ],
+      beerDoors,
+    ) +
+    select(
+      "flash",
+      [
+        ["", "Не определено"],
+        ["yes", "Есть"],
+        ["none", "Нет"],
+      ],
+      flashHO,
+    ) +
+    fitCountsUI(key, eq) +
+    "</details>";
+  let header =
+    '<details data-fit-key="' +
+    esc(key) +
+    '" open><summary>FIT · рекомендации Urban</summary><small>Матрица: ' +
+    esc(matrixText(t, fm)) +
+    "</small>";
+  if (!t && !fm) {
+    const opts = [
+      ...new Map(
+        [...(s.detail?.shops || []), ...(s.detail?.fit || [])]
+          .filter((x) => x.id)
+          .map((x) => [normalizeId(x.id), x]),
+      ).values(),
+    ];
+    header +=
+      '<p>Точка не сопоставлена. Выберите строку отчёта:</p><select aria-label="Сопоставить точку" onchange="fitLink(' +
+      esc(JSON.stringify(r.name)) +
+      "," +
+      esc(JSON.stringify(r.address || "")) +
+      ',this.value)"><option value="">Выберите ТТ</option>' +
       opts
         .map(
-          ([a, b]) =>
+          (x) =>
             '<option value="' +
-            a +
-            '" ' +
-            (a === v ? "selected" : "") +
-            ">" +
-            b +
+            esc(normalizeId(x.id)) +
+            '">' +
+            esc(x.name) +
             "</option>",
         )
         .join("") +
-      "</select>",
-    h =
-      '<details data-fit-key="' +
-      esc(key) +
-      '" open><summary>FIT · рекомендации Urban' + (routeNorm(r.name)==="бастау+"?" · тестовая ТТ":"") + '</summary><small>Матрица: ' +
-      esc(t?.matrix || "не определена") +
-      "</small><label>ХО NonAlco</label>" +
-      select(
-        "non",
-        [
-          ["", "Не определено"],
-          ["pepsi1", "Pepsi 1Д"],
-          ["flex", "Flex 400"],
-          ["pepsi2", "Pepsi 2Д"],
-          ["lipton", "Lipton"],
-          ["pepsi", "Pepsi / Lipton (уточнить)"],
-          ["none", "Нет Pepsi / Lipton"],
-        ],
-        non === "flash" ? "none" : non,
-      ) +
-      "<label>Пивное ХО</label>" +
-      select(
-        "beer",
-        [
-          ["", "Не определено"],
-          ["1d", "Пиво 1Д"],
-          ["2d", "Пиво 2Д"],
-          ["yes", "Есть (уточнить двери)"],
-          ["none", "Нет"],
-        ],
-        beerDoors,
-      ) +
-      "<label>Отдельное ХО Flash</label>" +
-      select(
-        "flash",
-        [
-          ["", "Не определено"],
-          ["yes", "Есть"],
-          ["none", "Нет"],
-        ],
-        flashHO,
-      ) + fitCountsUI(key,eq);
-  const equipmentHTML=h.slice(h.indexOf("<label>ХО NonAlco</label>"));
-  h=h.slice(0,h.indexOf("<label>ХО NonAlco</label>"));
-  const equipmentPanel="<details><summary>Настроить оборудование</summary>"+equipmentHTML+"</details>";
-  if (!t && !fm) {
-    const opts=[...new Map([...(s.detail?.shops||[]),...(s.detail?.fit||[])].filter(x=>x.id).map(x=>[String(x.id),x])).values()];
-    h+='<p>Точка не сопоставлена с отчётом. Выберите её вручную:</p><select onchange="fitLink('+esc(JSON.stringify(r.name))+','+esc(JSON.stringify(r.address||""))+',this.value)"><option value="">Выберите ТТ из детализации</option>'+opts.map(x=>'<option value="'+esc(String(x.id))+'">'+esc(x.name)+'</option>').join("")+'</select>';
+      "</select>";
   }
   if (!valid)
     return (
-      h +
-      "<p>Загрузите свежую детализацию повторно для анализа всех SKU и критериев.</p>"+equipmentPanel+"</details>"
+      header +
+      "<p>Нужна детализация за месяц выбранной даты.</p>" +
+      equipment +
+      "</details>"
     );
-  let stock = stockAliases(
-      (s.stockReport?.rows || []).filter(
-        (x) =>
-          !x.keg &&
-          !x.bib &&
-          !/flash.*(night movie|peach pineapple)/i.test(x.name),
-      ),
-    ),
-    seen = t?.sku || [],
-    known = t?.known || [],
-    rules = fitRules(type, beer);
+  const groups = fitRules(type, beer);
+  for (const g of groups)
+    if (g.key === "focusBeer") {
+      if (beerDoors === "1d") g.items = g.items.slice(0, 9);
+      else if (beerDoors === "2d")
+        g.items.push({
+          label: "Somersby Strawberry-Kiwi 0,43 л",
+          re: /somersby.*strawberry.*kiwi/i,
+          brand: "Somersby",
+          flavor: "strawberry kiwi",
+          volume: 0.43,
+          count: 1,
+        });
+    }
+  const model = fitModel(key, day, groups),
+    previous = fitPrevious(key, day, s.fitChecks);
+  let h =
+    '<section data-order-key="' +
+    esc(key) +
+    '"><h3>Рекомендации к заказу · ' +
+    model.order.length +
+    "</h3>" +
+    (model.order.length
+      ? fitOrderList(key, day, model.order)
+      : "<small>Отметьте отсутствующие товары в проверке.</small>") +
+    (model.blocked.length
+      ? '<details data-panel="blocked"><summary>Отсутствуют · требуют уточнения (' +
+        model.blocked.length +
+        ")</summary>" +
+        model.blocked
+          .map((x) =>
+            fitCheckedRow(key, day, { ...x, name: x.name + " · " + x.reason }),
+          )
+          .join("") +
+        "</details>"
+      : "") +
+    (model.present.length
+      ? '<details data-panel="present"><summary>Есть в точке (' +
+        model.present.length +
+        ")</summary>" +
+        model.present.map((x) => fitCheckedRow(key, day, x)).join("") +
+        "</details>"
+      : "") +
+    "</section>";
   h +=
-    "<small>История продаж ≠ наличие на полке. Баллы — вес группы, не гарантированный прирост. Для Focus уточните региональную матрицу и число дверей ХО.</small>";
-  if(!fm?.criteria) h+="<p>Подробные оценки недоступны. Список для проверки.</p>";
-  if(!t?.sku) h+="<p>Контрольный ассортимент: история SKU недоступна. Проверьте наличие в магазине.</p>";
-  const previous=fitPrevious(key,day,s.fitChecks);
-  const checks=fitSnapshot(key,day,s.fitChecks), order=[], blocked=[], present=[];
-  if(previous&&!s.fitChecks?.[JSON.stringify([key,day])])h+='<p><small>Отметки перенесены с '+esc(previous.day)+' · проверьте изменения. Чтобы изменить позицию, верните её в проверку.</small></p>';
-  for (let g of rules) {
-    let score = fm?.criteria ? fitCriterion(fm, g) : null;
-    if (score != null && score * 100 >= g.max - 0.05)
-      continue;
-    if(g.key==="focusBeer"){
-      if(beerDoors==="1d")g.items=g.items.slice(0,9);
-      else if(beerDoors==="2d")g.items.push({label:"Somersby Strawberry-Kiwi 0,43 л",re:/somersby.*strawberry.*kiwi/i,count:1});
-    }
-    let items = fitMissing(g, seen, known, stock);
-    if(g.key==="focusBeer"){
-      const norm=beerDoors==="1d"?9:beerDoors==="2d"?11:null;
-      const gap=items.reduce((n,x)=>n+(Number(x.name.match(/не хватает (\d+) SKU/)?.[1])||1),0);
-      const tolerance=beerDoors==="1d"?3:0;
-      h+='<p><small>'+ (norm===null?'Уточните двери ХО.':'Focus: '+norm+' SKU'+(tolerance?' · допустимое отклонение −3':' · отклонение не указано'))+' · матрица Жезказгана. История SKU не подтверждает выкладку.</small></p>';
-      if(norm!==null&&t?.sku?.length)h+='<p><small>По истории подтверждены нерегиональные позиции: '+Math.max(0,norm-gap)+'. Допустимое отклонение проверить отдельно.</small></p>';
-      // Regional alternatives are not verified; do not suppress checklist based on tolerance.
-    }
+    header +
+    "<p><small>URBAN · Жезказган. SKU и баллы из детализации — история, наличие проверяется во время визита.</small></p>";
+  if (previous && !s.fitChecks?.[shelfHistoryKey(key, day)])
+    h +=
+      "<p><small>Последние отметки с " +
+      esc(previous.day) +
+      " перенесены для повторной проверки.</small></p>";
+  if (!t)
+    h +=
+      "<p><small>Точка найдена в FIT, но Sheet4 не содержит для неё матрицу и историю SKU. Оборудование задаётся вручную.</small></p>";
+  for (const group of groups) {
+    const score = fm?.criteria ? fitCriterion(fm, group) : null,
+      rows = model.pending.filter((x) => x.group === group.key);
     h +=
       '<div class="task"><b>' +
-      esc(g.label) +
-      "</b><br><small>Вес критерия: "+g.max+"%"+(score==null?"":" · оценка: "+fmt(score*100)+" п.п.")+"</small>"+
-      items.map(x=>{
- const sku=g.key+":"+x.label, value=checks[sku]||"", available=x.stocks.some(st=>st.qty>0);
- const alternative=/региональн|на выбор|дополнительных/.test(x.label);
- const name=x.name.replace(/ · не хватает (\d+) SKU/," · проверить $1 SKU");
- if(value==="yes"){present.push({sku,name});return "";}
- if(value==="no"&&g.key==="flash"&&x.label.includes("дополнительных")){
- const flavors=new Map();
- for(const st of x.choices){const flavor=st.name.match(/bubble gum|exotic|mojito strawberry|pomegranate|morning cakes/i)?.[0].toLowerCase();if(flavor&&!flavors.has(flavor))flavors.set(flavor,st);}
- const picks=[...flavors.values()].slice(0,x.need);
- if(picks.length)for(const st of picks)order.push({sku,name:st.name,brand:"Flash",faces:"1 фейс · проверить наличие в точке"});
- if(picks.length<x.need)blocked.push({sku,name:"Flash: недостаточно подходящих вкусов на складе"});
- return "";
- }
- if(value==="no"){(available&&!alternative?order:blocked).push({sku,name:available&&!alternative?x.label:name+(alternative?" · уточнить вкус":available?"":x.stocks.length?" · нулевой остаток":" · не найдено в отчёте"),brand:fitOrderBrand(x.label),faces:fitFacing(g,x.label,type,beerDoors)});return "";}
- return '<div style="padding:10px 0;border-bottom:1px solid #64748b44"><b>'+esc(name)+'</b>'+(fitFacing(g,x.label,type,beerDoors)?' <small>· '+esc(fitFacing(g,x.label,type,beerDoors))+'</small>':'')+fitCheckButtons(key,day,sku)+'</div>';
- }).join("")+
-      (items.length ? "" : "<small>Проверить выкладку, фейсы и фото.</small>") +
+      esc(group.label) +
+      "</b><br><small>Вес критерия: " +
+      group.max +
+      "%" +
+      (score == null
+        ? ""
+        : " · предыдущая оценка: " + fmt(score * 100) + " п.п.") +
+      "</small>";
+    if (group.key === "focusBeer")
+      h +=
+        "<p><small>Focus: " +
+        (beerDoors === "1d"
+          ? "9 SKU · отклонение −3"
+          : beerDoors === "2d"
+            ? "11 SKU"
+            : "уточните число дверей") +
+        ". Вкусы Жезказгана подтверждены.</small></p>";
+    if (group.items.some((x) => x.count > 1))
+      h +=
+        "<p><small>Два SKU на выбор; для дополнительных вкусов Flash — два разных актуальных вкуса.</small></p>";
+    h +=
+      rows
+        .map(
+          (row) =>
+            '<div class="shelf-row" data-shelf-sku="' +
+            esc(row.sku) +
+            '"><b>' +
+            esc(row.name) +
+            "</b>" +
+            (row.unconfirmed
+              ? "<small> · обязательность объёмов пока не подтверждена</small>"
+              : "") +
+            (fitFacing(group, row.name, type, beerDoors)
+              ? "<small> · " +
+                esc(fitFacing(group, row.name, type, beerDoors)) +
+                "</small>"
+              : "") +
+            fitCheckButtons(key, day, row.sku) +
+            "</div>",
+        )
+        .join("") +
+      (rows.length
+        ? ""
+        : "<p><small>Все позиции проверены. Изменить отметки можно выше.</small></p>") +
       "</div>";
   }
   if (!type || !beer)
-    h += '<p><small>Общая проверка: наличие товара, ценники, сроки годности. Неизвестное ХО не считается отсутствующим.</small></p>';
-  if (!type || !beer)
     h +=
-      "<p><small>Выберите тип ХО для рекомендаций соответствующей категории.</small></p>";
+      "<p><small>Выберите типы ХО: неизвестное оборудование не считается отсутствующим.</small></p>";
   if (beer === "yes")
     h +=
-      (beerDoors === "1d"
-        ? "<p><small>Пиво 1Д: проверить нормы фейсов и Focus для одной двери.</small></p>"
-        : beerDoors === "2d"
-          ? "<p><small>Пиво 2Д: проверить нормы фейсов для двух дверей.</small></p>"
-          : "") +
-      "<small>Дополнительно: проверить двери, место ХО, планограмму, заполнение 80%, ценники 70%, FEFO.</small>";
-  if (type === "flash" || type === "pepsi" || type === "flex")
-    h +=
-      "<p><small>Flash: 2 Ultra + Classic + Ultra 0,25 + 2 дополнительных SKU, 6 фейсов. Для точки без ХО — 2 SKU.</small></p>";
-  return '<section><h3>Рекомендации к заказу · '+order.length+'</h3>'+(order.length?fitOrderList(key,day,order):'<small>Отметьте отсутствующие товары ниже.</small>')+(blocked.length?'<details><summary>Отсутствуют · требуют уточнения ('+blocked.length+')</summary>'+blocked.map(x=>fitCheckedRow(key,day,x)).join("")+'</details>':'')+(present.length?'<details><summary>Есть в точке ('+present.length+')</summary>'+present.map(x=>fitCheckedRow(key,day,x)).join("")+'</details>':'')+'</section>'+h+equipmentPanel+"</details>";
+      "<small>Проверьте место ХО, планограмму, заполнение 80%, ценники 70% и FEFO.</small>";
+  return h + equipment + "</details>";
 }
 function promoUI() {
   return '<section><h3>Калькулятор акций</h3><label>Цена за штуку</label><input id="prPrice" type="number" min="0" value="0" oninput="promoCalc()"><label>Оплачиваемые штуки</label><input id="prQty" type="number" min="0" value="24" oninput="promoCalc()"><label>Акция</label><select id="prRule" onchange="promoCalc()"><option value="4">4+1</option><option value="6">6+1</option><option value="0">Без акции</option></select><label>Объём единицы, л</label><input id="prLit" type="number" min="0" step=".01" value=".43" oninput="promoCalc()"><div id="prResult">Введите цену</div></section>';
@@ -3058,20 +3655,49 @@ function promoCalc() {
 }
 async function restoreMix(file) {
   try {
-    let v = validateMix(JSON.parse(await file.text()));
+    if (file.size > 100 * 1024 * 1024) throw Error("Слишком большая копия");
+    const parsed = JSON.parse(await file.text()),
+      docs = decodeDocuments(parsed.documents);
+    delete parsed.documents;
+    const v = validateMix(parsed);
     if (
       !confirm(
-        "Восстановить данные из копии? Текущее состояние будет сохранено перед восстановлением. Исходные документы останутся на устройстве.",
+        "Восстановить данные и документы из копии? Текущее состояние будет сохранено перед восстановлением. Существующие документы останутся на устройстве.",
       )
     )
       return;
-    let current = localStorage.getItem("mix-v1");
+    const current = localStorage.getItem("mix-v1");
     if (current !== null) localStorage.setItem("mix-before-restore", current);
     localStorage.setItem("mix-v1", JSON.stringify(v));
-    storageProblem = "";
+    try {
+      await restoreDocuments(docs);
+    } catch (e) {
+      if (current === null) localStorage.removeItem("mix-v1");
+      else localStorage.setItem("mix-v1", current);
+      throw e;
+    }
     s = v;
+    storageProblem = "";
+    activeVisit = v.activeVisit || null;
+    const ui = v.uiState || {};
+    tab =
+      Number.isInteger(ui.tab) && ui.tab >= 0 && ui.tab <= 10
+        ? ui.tab
+        : activeVisit
+          ? 10
+          : 0;
+    viewStates = ui.views || {};
+    renderedScope = null;
+    routeFilter = ui.routeFilter || "all";
+    routeQuery = ui.routeQuery || "";
+    clientEditIndex =
+      Number.isInteger(ui.client) && s.clients[ui.client] ? ui.client : null;
+    try {
+      sessionStorage.removeItem("mix-ui");
+      sessionStorage.removeItem("mix-scroll");
+    } catch {}
     routeMigrateNotes();
-    go(0);
+    render();
     alert("Резервная копия восстановлена.");
   } catch (e) {
     alert("Копия не восстановлена: " + e.message);
@@ -3233,7 +3859,9 @@ function validateMix(v) {
         if (
           t.criterionHeaders !== undefined &&
           (!Array.isArray(t.criterionHeaders) ||
-            !t.criterionHeaders.every((n) => typeof n === "string"))
+            !t.criterionHeaders.every(
+              (n) => n == null || typeof n === "string",
+            ))
         )
           fail();
       }
@@ -3254,11 +3882,123 @@ function validateMix(v) {
       ))
   )
     fail();
+  validatePilotState(v, fail);
   return {
     ...structuredClone(initial),
     ...v,
     pay: { ...initial.pay, ...v.pay },
   };
+}
+function validatePilotState(v, fail) {
+  const obj = (x) => x && typeof x === "object" && !Array.isArray(x),
+    strings = (a) => Array.isArray(a) && a.every((x) => typeof x === "string");
+  const report = (r) => {
+    if (
+      !obj(r) ||
+      !Array.isArray(r.kpi) ||
+      !Array.isArray(r.shops) ||
+      !Array.isArray(r.fit) ||
+      !obj(r.visits)
+    )
+      fail();
+    if (
+      !r.kpi.every(
+        (k) =>
+          obj(k) &&
+          typeof k.name === "string" &&
+          Number.isFinite(k.fact) &&
+          Number.isFinite(k.plan),
+      )
+    )
+      fail();
+    if (r.skuCatalog && !strings(r.skuCatalog)) fail();
+  };
+  if (v.detailHistory !== undefined) {
+    if (!Array.isArray(v.detailHistory)) fail();
+    v.detailHistory.forEach(report);
+  }
+  if (
+    v.stockHistory !== undefined &&
+    (!Array.isArray(v.stockHistory) ||
+      !v.stockHistory.every(
+        (r) =>
+          obj(r) &&
+          Array.isArray(r.rows) &&
+          r.rows.every(
+            (x) =>
+              obj(x) &&
+              typeof x.name === "string" &&
+              Number.isFinite(x.qty) &&
+              Number.isFinite(x.pack) &&
+              x.pack > 0,
+          ),
+      ))
+  )
+    fail();
+  if (
+    v.fitLinks !== undefined &&
+    (!obj(v.fitLinks) ||
+      Object.values(v.fitLinks).some(
+        (id) => typeof id !== "string" && typeof id !== "number",
+      ))
+  )
+    fail();
+  if (v.fitChecks !== undefined) {
+    if (!obj(v.fitChecks)) fail();
+    for (const [key, checks] of Object.entries(v.fitChecks)) {
+      let pair;
+      try {
+        pair = JSON.parse(key);
+      } catch {
+        fail();
+      }
+      if (
+        !Array.isArray(pair) ||
+        pair.length !== 2 ||
+        typeof pair[0] !== "string" ||
+        !validDate(pair[1]) ||
+        !obj(checks) ||
+        Object.values(checks).some((x) => x !== "yes" && x !== "no")
+      )
+        fail();
+    }
+  }
+  const visit = (a) => {
+    if (
+      !obj(a) ||
+      !validDate(a.day) ||
+      typeof a.key !== "string" ||
+      !Number.isInteger(a.i) ||
+      a.i < 0
+    )
+      fail();
+  };
+  if (v.activeVisit != null) visit(v.activeVisit);
+  if (v.visitHistory !== undefined) {
+    if (!Array.isArray(v.visitHistory)) fail();
+    v.visitHistory.forEach(visit);
+  }
+  if (v.uiState !== undefined && !obj(v.uiState)) fail();
+  for (const key of ["stockFilters", "detailPrefs"])
+    if (v[key]) {
+      for (const [field, value] of Object.entries(v[key])) {
+        if (
+          ["limit", "goal", "days"].includes(field) &&
+          (!Number.isFinite(value) || value <= 0)
+        )
+          fail();
+      }
+    }
+  for (const r of Object.values(v.monolit || {}))
+    if (
+      !r.rows.every(
+        (x) =>
+          typeof x.name === "string" &&
+          Number.isFinite(x.qty) &&
+          Number.isFinite(x.money),
+      )
+    )
+      fail();
 }
 function bindLabels() {
   let index = 0;
@@ -3278,7 +4018,660 @@ function bindLabels() {
   });
 }
 
+// Shared identities for the importers, shelf checks and order list.
+function productInfo(name) {
+  const cached = productCache.get(String(name));
+  if (cached) return cached;
+  const text = String(name || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/хoльстен/g, "хольстен");
+  const packMatch = text.match(
+    /(\d+(?:[.,]\d+)?)\s*(?:л|l)?\s*[*×xх]\s*(\d+)/i,
+  );
+  const volumeMatch =
+    packMatch ||
+    text.match(
+      /(?:бан(?:ка)?\.?|бут\.?|pet|пэт|can|glass|bottle)\s*[, .]*\s*(\d+(?:[.,]\d+)?)/i,
+    ) ||
+    text.match(/(?:^|[^\d])([0-9]+(?:[.,]\d+)?)\s*(?:л|l)(?:\b|\s|$)/i);
+  let volume = volumeMatch ? Number(volumeMatch[1].replace(",", ".")) : null;
+  if (!(volume > 0 && volume <= 100)) volume = null;
+  const pack = packMatch ? Number(packMatch[2]) : 1;
+  const keg = /кег|keg/.test(text),
+    bib = /биб|\bbib\b/.test(text);
+  const container = keg
+    ? "keg"
+    : bib
+      ? "bib"
+      : /пэт|\bpet\b/.test(text)
+        ? "pet"
+        : /бан|\bcan\b/.test(text)
+          ? "can"
+          : /бут|glass|bottle/.test(text)
+            ? "bottle"
+            : "";
+  const brand = /flash/.test(text)
+    ? "Flash"
+    : /lipton|липтон/.test(text)
+      ? "Lipton"
+      : /holsten|хольстен/.test(text)
+        ? "Holsten"
+        : /carlsberg|карлсберг/.test(text)
+          ? "Carlsberg"
+          : /garage/.test(text)
+            ? "Garage"
+            : /somersby/.test(text)
+              ? "Somersby"
+              : /pepsi/.test(text)
+                ? "Pepsi"
+                : /mirinda/.test(text)
+                  ? "Mirinda"
+                  : /7up/.test(text)
+                    ? "7UP"
+                    : /жатецкий|zatecky/.test(text)
+                      ? "Жатецкий Гусь"
+                      : /kronenbourg|кроненбург|1664/.test(text)
+                        ? "1664 Blanc"
+                        : /большая кружка/.test(text)
+                          ? "Большая Кружка"
+                          : "";
+  let flavor = "";
+  const aliases = [
+    ["raspberry currant", /raspberry.*currant/],
+    ["black cherry", /black.*cherry/],
+    ["strawberry kiwi", /strawberry.*kiwi/],
+    ["blackberry", /blackberry/],
+    ["soju", /soju/],
+    ["bubble gum", /bubble.*gum/],
+    ["mojito strawberry", /mojito/],
+    ["morning cakes", /morning.*cakes/],
+    ["pomegranate", /pomegranate/],
+    ["exotic", /exotic/],
+    ["night movie", /night.*movie/],
+    ["peach pineapple", /peach.*pineapple/],
+    ["ultra", /ultra/],
+    ["mango", /mango|манго/],
+    ["raspberry", /raspberry|малин/],
+    ["peach", /peach|персик/],
+    ["lemon", /lemon|лимон/],
+    ["light", /light/],
+    ["pilsener", /pilsener|pilsner|пил[сз]|premium|премиум/],
+    ["blanc", /blanc|бланк/],
+    ["zero", /zero|№\s*0|безалкоголь|\b0[.,]0\b/],
+    ["крепкое", /крепк/],
+    ["экспортное", /экспорт/],
+    ["мягкое", /мягк|myagk/],
+  ];
+  flavor = aliases.find(([, re]) => re.test(text))?.[0] || "";
+  if (brand === "Flash" && !flavor) {
+    const extra = text
+      .split(/\d+[.,]\d+/)[0]
+      .replace(/flash|up|energy|\ble\b|т\/у|бан\.?|can|[, .]/g, "")
+      .trim();
+    flavor =
+      extra && extra !== "classic" && extra !== "original" ? extra : "classic";
+  }
+  const discontinued =
+    brand === "Flash" && ["night movie", "peach pineapple"].includes(flavor);
+  const cat =
+    brand === "Flash"
+      ? "FLASH"
+      : brand === "Lipton"
+        ? "LIPTON"
+        : ["Pepsi", "Mirinda", "7UP"].includes(brand)
+          ? "CSD"
+          : /пиво|пивной|beer/.test(text) ||
+              [
+                "Holsten",
+                "Carlsberg",
+                "Garage",
+                "Somersby",
+                "Жатецкий Гусь",
+                "1664 Blanc",
+                "Большая Кружка",
+              ].includes(brand)
+            ? "BEER"
+            : "CSD";
+  const result = {
+    text,
+    brand,
+    flavor,
+    volume,
+    pack,
+    container,
+    keg,
+    bib,
+    discontinued,
+    cat,
+  };
+  if (productCache.size > 10000) productCache.clear();
+  productCache.set(String(name), Object.freeze(result));
+  return result;
+}
+function productMatch(item, name) {
+  const p = productInfo(name);
+  if (p.discontinued || p.keg || p.bib) return false;
+  if (item.flavors && ["classic", "ultra"].includes(p.flavor)) return false;
+  if (item.brand && p.brand !== item.brand) return false;
+  if (item.flavor && p.flavor !== item.flavor) return false;
+  if (item.volume != null && p.volume !== item.volume) return false;
+  if (item.container && p.container !== item.container) return false;
+  return item.re.test(String(name));
+}
+function stockKey(row) {
+  return (
+    row.id ||
+    String(row.name)
+      .normalize("NFKC")
+      .toLowerCase()
+      .replace(/[,.](?=\d)/g, ".")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+function currentStock() {
+  return (s.stockReport?.rows || []).filter(
+    (r) => !productInfo(r.name).discontinued && !r.keg && !r.bib,
+  );
+}
+function pickStock(item) {
+  return (
+    currentStock()
+      .filter((r) => r.qty > 0 && productMatch(item, r.name))
+      .sort(
+        (a, b) => b.qty - a.qty || stockKey(a).localeCompare(stockKey(b)),
+      )[0] || null
+  );
+}
+function shelfItems(group) {
+  return group.items.flatMap((item) => {
+    if (item.count <= 1)
+      return [
+        {
+          ...item,
+          sku: group.key + ":" + item.label,
+          name: item.label,
+          group: group.key,
+        },
+      ];
+    const candidates = [
+      ...currentStock().map((r) => r.name),
+      ...(s.detail?.skuCatalog || []),
+      ...(s.detail?.shops || []).flatMap((t) => t.known || []),
+    ].filter((n) => productMatch(item, n));
+    const map = new Map();
+    for (const name of candidates) {
+      const p = productInfo(name),
+        identity = item.flavors
+          ? p.flavor
+          : [p.flavor, p.volume, p.container].join("|");
+      if (!map.has(identity))
+        map.set(identity, {
+          ...item,
+          count: 1,
+          volume: item.flavors ? null : p.volume,
+          flavor: p.flavor,
+          container: item.flavors ? null : p.container,
+          sku: group.key + ":choice:" + identity,
+          name: item.flavors
+            ? "Flash " + flashFlavorLabel(p.flavor)
+            : "Flash " +
+              flashFlavorLabel(p.flavor) +
+              " " +
+              String(p.volume || "").replace(".", ",") +
+              " л",
+          choice: true,
+          group: group.key,
+        });
+    }
+    // The shelf checklist stays usable when stock has not been imported.
+    if (!map.size && item.flavors)
+      for (const flavor of [
+        "bubble gum",
+        "exotic",
+        "mojito strawberry",
+        "pomegranate",
+        "morning cakes",
+      ])
+        map.set(flavor, {
+          ...item,
+          count: 1,
+          flavor,
+          sku: group.key + ":choice:" + flavor,
+          name: "Flash " + flashFlavorLabel(flavor),
+          choice: true,
+          group: group.key,
+        });
+    if (!map.size && !item.flavors)
+      for (const [flavor, volume] of [
+        ["classic", 0.43],
+        ["ultra", 0.43],
+        ["ultra", 0.25],
+        ["exotic", 0.43],
+      ]) {
+        let identity = [flavor, volume, "can"].join("|");
+        map.set(identity, {
+          ...item,
+          count: 1,
+          flavor,
+          volume,
+          container: "can",
+          sku: group.key + ":choice:" + identity,
+          name:
+            "Flash " +
+            flashFlavorLabel(flavor) +
+            " " +
+            String(volume).replace(".", ",") +
+            " л",
+          choice: true,
+          group: group.key,
+        });
+      }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "ru"));
+  });
+}
+function flashFlavorLabel(flavor) {
+  return (
+    {
+      classic: "Classic",
+      ultra: "Ultra",
+      "bubble gum": "Bubble Gum",
+      exotic: "Exotic",
+      "mojito strawberry": "Mojito Strawberry",
+      pomegranate: "Pomegranate",
+      "morning cakes": "Morning Cakes",
+    }[flavor] || flavor
+  );
+}
+function fitModel(key, day, groups) {
+  const checks = fitSnapshot(key, day, s.fitChecks),
+    pending = [],
+    present = [],
+    blocked = [],
+    order = [];
+  const used = new Set();
+  for (const group of groups) {
+    const rows = shelfItems(group),
+      choice = group.items.find((x) => x.count > 1),
+      yesChoices = rows.filter(
+        (x) => x.choice && checks[x.sku] === "yes",
+      ).length;
+    let remaining = choice ? Math.max(0, choice.count - yesChoices) : Infinity;
+    for (const row of rows) {
+      const value = checks[row.sku] || "",
+        candidate = pickStock(row),
+        checked = { ...row, candidate };
+      if (value === "yes") {
+        present.push(checked);
+        continue;
+      }
+      if (value !== "no") {
+        pending.push(checked);
+        continue;
+      }
+      if (row.unconfirmed) {
+        blocked.push({ ...checked, reason: "Уточнить обязательный объём" });
+        continue;
+      }
+      if (!candidate) {
+        blocked.push({
+          ...checked,
+          reason: currentStock().some((st) => productMatch(row, st.name))
+            ? "Нет в наличии на складе"
+            : "Нет позиции в складском отчёте",
+        });
+        continue;
+      }
+      if (row.choice && remaining <= 0) {
+        blocked.push({
+          ...checked,
+          reason: "Нужное количество SKU на выбор уже отмечено",
+        });
+        continue;
+      }
+      const identity = stockKey(candidate);
+      if (used.has(identity)) continue;
+      used.add(identity);
+      if (row.choice) remaining--;
+      order.push({
+        ...checked,
+        name: candidate.name,
+        brand:
+          productInfo(candidate.name).brand || fitOrderBrand(candidate.name),
+        stockId: identity,
+      });
+    }
+  }
+  const known = new Set(groups.flatMap((g) => shelfItems(g)).map((r) => r.sku));
+  for (const [sku, value] of Object.entries(checks))
+    if (!known.has(sku)) {
+      const old = {
+        sku,
+        name: sku.split(":").slice(1).join(":") + " · отметка прошлой версии",
+      };
+      if (value === "yes") present.push(old);
+      else blocked.push({ ...old, reason: "Перепроверьте текущую позицию" });
+    }
+  return { pending, present, blocked, order };
+}
+function normalizeId(value) {
+  return value == null ? "" : String(value).trim().replace(/\.0$/, "");
+}
+function addressKey(value) {
+  return String(value || "")
+    .split(" · ")[0]
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/(?:^|[^\p{L}\p{N}])(?:улица|ул\.?|дом|д\.?)(?=\s|\d|$)/gu, " ")
+    .replace(/[^\p{L}\p{N}/]/gu, "");
+}
+function sameAddress(a, b) {
+  const x = addressKey(a),
+    y = addressKey(b);
+  return Boolean(x && y && (x === y || x.endsWith(y) || y.endsWith(x)));
+}
+function shopAddress(row) {
+  return row.address || String(row.name || "").match(/\(([^)]*)\)/)?.[1] || "";
+}
+function resolveShop(r) {
+  const shops = s.detail?.shops || [],
+    fit = s.detail?.fit || [];
+  let t = routeMatch(shops, r.name, r.address, r.id || r.shopId),
+    fm =
+      (t?.id
+        ? fit.find((x) => normalizeId(x.id) === normalizeId(t.id))
+        : null) || routeMatch(fit, r.name, r.address, r.id || r.shopId);
+  if (!t && fm)
+    t = shops.find((x) => normalizeId(x.id) === normalizeId(fm.id)) || null;
+  return { t, fm };
+}
+function matrixText(t, fm) {
+  return (
+    t?.matrix ||
+    (fm
+      ? "нет строки матрицы в Sheet4 для найденной ТТ"
+      : "точка не сопоставлена")
+  );
+}
+function commitState(next) {
+  const previous = s;
+  s = next;
+  if (save()) return true;
+  s = previous;
+  return false;
+}
+function contentSame(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+function safeReportHTML(value) {
+  return String(value)
+    .replace(/<!--[^]*?-->/g, "")
+    .replace(/<(script|style)[^>]*>[^]*?<\/\1\s*>/gi, "")
+    .replace(/<[^>]*>/g, (tag) => {
+      const m = tag.match(/^<\s*(\/?)\s*([a-z][\w:-]*)/i);
+      if (
+        !m ||
+        ![
+          "html",
+          "head",
+          "body",
+          "title",
+          "table",
+          "thead",
+          "tbody",
+          "tfoot",
+          "tr",
+          "td",
+          "th",
+          "caption",
+          "span",
+          "div",
+          "p",
+          "br",
+          "b",
+          "i",
+          "strong",
+          "small",
+        ].includes(m[2].toLowerCase())
+      )
+        return "";
+      const id = tag.match(/\bid\s*=\s*(?:"([\w:-]+)"|'([\w:-]+)'|([\w:-]+))/i);
+      return (
+        "<" +
+        m[1] +
+        m[2].toLowerCase() +
+        (id && !m[1] ? ' id="' + (id[1] || id[2] || id[3]) + '"' : "") +
+        ">"
+      );
+    });
+}
+async function checkedBytes(file, limit = 25 * 1024 * 1024) {
+  if (file.size > limit) throw Error("Слишком большой файл");
+  const bytes = await file.arrayBuffer();
+  if (!bytes.byteLength) throw Error("Пустой файл");
+  if (bytes.byteLength > limit) throw Error("Слишком большой файл");
+  return bytes;
+}
+async function loadMonolitFile(file) {
+  try {
+    const bytes = await checkedBytes(file);
+    let prefix = new TextDecoder().decode(bytes.slice(0, 512)),
+      encoding = /charset\s*=\s*["']?windows-1251/i.test(prefix)
+        ? "windows-1251"
+        : "utf-8";
+    await monoLoad(new TextDecoder(encoding).decode(bytes));
+  } catch (e) {
+    alert("Ошибка: " + e.message);
+  }
+}
+function decodeShortcut(value) {
+  let text = String(value || "")
+    .trim()
+    .replace(/^data:[^,]+;base64,/i, "")
+    .replace(/\s/g, "");
+  if (!text) throw Error("Буфер пуст");
+  if (text.length > 36 * 1024 * 1024) throw Error("Слишком большой отчёт");
+  let raw = atob(text),
+    bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  return {
+    bytes,
+    pdf: raw.startsWith("%PDF-"),
+    excel: raw.startsWith("PK\x03\x04") || raw.startsWith("\xd0\xcf\x11\xe0"),
+  };
+}
+// View state is session-only; business data and an active visit are in mix-v1.
+let renderedScope = null,
+  viewStates =
+    restoredUI.views && typeof restoredUI.views === "object"
+      ? restoredUI.views
+      : {};
+function viewScope() {
+  return (
+    String(tab) +
+    "|" +
+    (tab === 10
+      ? routeDate() + "|" + (visitCurrent()?.key || "")
+      : tab === 3 && clientEditIndex != null
+        ? routeKey({
+            name: s.clients[clientEditIndex]?.a,
+            address: s.clients[clientEditIndex]?.b,
+          })
+        : "")
+  );
+}
+function detailPath(el) {
+  const parts = [];
+  for (let node = el; node && node.id !== "view"; node = node.parentElement) {
+    if (node.matches?.("details")) {
+      const summary = node.querySelector("summary");
+      parts.unshift(
+        (node.dataset.fitKey || "") + ":" + (summary?.textContent || ""),
+      );
+    }
+  }
+  return parts.join("/");
+}
+function rememberView() {
+  if (!renderedScope || !$("view")) return;
+  const details = {};
+  $("view")
+    .querySelectorAll("details")
+    .forEach((el) => (details[detailPath(el)] = el.open));
+  const drafts = {};
+  $("view")
+    .querySelectorAll(
+      "textarea,input[type=search],#task,#boss,#due,#a,#b,#clientsearch",
+    )
+    .forEach((el) => {
+      if (el.id) drafts[el.id] = el.value;
+    });
+  viewStates[renderedScope] = {
+    y: Math.max(0, Number(window.scrollY) || 0),
+    details,
+    drafts,
+  };
+}
+function persistUI() {
+  try {
+    sessionStorage.setItem(
+      "mix-ui",
+      JSON.stringify({
+        tab,
+        visit: activeVisit,
+        client: clientEditIndex,
+        clientName: s.clients[clientEditIndex]?.a,
+        views: viewStates,
+        routeQuery,
+        routeFilter,
+      }),
+    );
+  } catch {}
+}
+function restoreView() {
+  renderedScope = viewScope();
+  const saved = viewStates[renderedScope];
+  if (saved) {
+    $("view")
+      .querySelectorAll("details")
+      .forEach((el) => {
+        if (Object.hasOwn(saved.details || {}, detailPath(el)))
+          el.open = Boolean(saved.details[detailPath(el)]);
+      });
+    for (const [id, value] of Object.entries(saved.drafts || {})) {
+      const el = $(id);
+      if (el && typeof value === "string") el.value = value;
+    }
+  }
+  if ($("clientlist") && $("clientsearch"))
+    filterClients($("clientsearch").value);
+  persistUI();
+  if (typeof requestAnimationFrame === "function")
+    requestAnimationFrame(() => window.scrollTo(0, saved?.y || 0));
+}
+function shelfHistoryKey(key, day) {
+  return JSON.stringify([key, day]);
+}
+function persistVisit() {
+  s.activeVisit = activeVisit ? structuredClone(activeVisit) : null;
+  save();
+  persistUI();
+}
+
+async function storedDocuments() {
+  if (typeof indexedDB === "undefined") return [];
+  const db = await docDB();
+  try {
+    return await new Promise((ok, no) => {
+      const r = db.transaction("files").objectStore("files").getAll();
+      r.onsuccess = () => ok(r.result);
+      r.onerror = () => no(r.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+async function exportDocuments() {
+  const rows = await storedDocuments(),
+    out = [];
+  for (const row of rows) {
+    const bytes = new Uint8Array(await row.file.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 32768)
+      binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+    out.push({
+      name: row.name,
+      type: row.type,
+      date: row.date,
+      mime: row.file.type || "application/octet-stream",
+      base64: btoa(binary),
+    });
+  }
+  return out;
+}
+function decodeDocuments(docs) {
+  if (docs === undefined) return [];
+  if (!Array.isArray(docs)) throw Error("Некорректные документы в копии");
+  let total = 0;
+  return docs.map((row) => {
+    if (
+      !row ||
+      typeof row.name !== "string" ||
+      typeof row.base64 !== "string" ||
+      row.base64.length > 70 * 1024 * 1024
+    )
+      throw Error("Некорректный документ в копии");
+    const raw = atob(row.base64);
+    total += raw.length;
+    if (total > 75 * 1024 * 1024)
+      throw Error("Слишком много документов в копии");
+    const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+    return {
+      name: row.name,
+      type: String(row.type || ""),
+      date: String(row.date || ""),
+      file: new File([bytes], row.name, {
+        type: row.mime || "application/octet-stream",
+      }),
+    };
+  });
+}
+async function restoreDocuments(rows) {
+  if (!rows.length) return;
+  const current = await storedDocuments(),
+    add = [];
+  for (const row of rows) {
+    let same = false;
+    for (const old of [...current, ...add]) {
+      if (old.name !== row.name || old.file.size !== row.file.size) continue;
+      const a = new Uint8Array(await old.file.arrayBuffer()),
+        b = new Uint8Array(await row.file.arrayBuffer());
+      if (a.every((v, i) => v === b[i])) {
+        same = true;
+        break;
+      }
+    }
+    if (!same) add.push(row);
+  }
+  if (!add.length) return;
+  const db = await docDB();
+  try {
+    await new Promise((ok, no) => {
+      const tx = db.transaction("files", "readwrite");
+      for (const row of add) tx.objectStore("files").add(row);
+      tx.oncomplete = ok;
+      tx.onerror = () => no(tx.error);
+      tx.onabort = () => no(tx.error || Error("Не восстановлены документы"));
+    });
+  } finally {
+    db.close();
+  }
+}
+
 routeMigrateNotes();
 render();
-window.addEventListener("pagehide",()=>{try{sessionStorage.setItem("mix-scroll",String(window.scrollY));}catch{}});
-try{const y=Number(sessionStorage.getItem("mix-scroll")||0);if(y>0)requestAnimationFrame(()=>window.scrollTo(0,y));}catch{}
+window.addEventListener("pagehide", () => {
+  rememberView();
+  persistUI();
+});

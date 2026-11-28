@@ -765,3 +765,51 @@ input[type="file"] {
 .rtactions button {
   min-width: 80px;
 }
+
+/* Stable visit checklist; keep the existing compact theme. */
+.shelf-row {
+  padding: 10px 0;
+  border-bottom: 1px solid #64748b44;
+}
+.shelf-row > small {
+  font-size: 12px;
+}
+.order-brand {
+  margin: 10px 0;
+}
+.order-brand > b {
+  display: block;
+  font-size: 15px;
+  padding: 5px 0;
+}
+.order-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid #64748b33;
+}
+.order-row span {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  line-height: 1.3;
+}
+.order-row button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 8px;
+}
+nav button {
+  min-width: 0;
+}
+nav span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+button {
+  touch-action: manipulation;
+}
+#view {
+  overflow-wrap: anywhere;
+}

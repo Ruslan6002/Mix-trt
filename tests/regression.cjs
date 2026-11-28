@@ -40,7 +40,15 @@ const context = vm.createContext({
   TextDecoder,
   Uint8Array,
   atob,
-  window: { scrollTo() {} },
+  window: {
+    scrollY: 0,
+    scrollTo(x, y) {
+      this.scrollY = y;
+    },
+    addEventListener() {},
+  },
+  requestAnimationFrame: (fn) => fn(),
+  sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
   alert: (m) => alerts.push(m),
   confirm: () => true,
   prompt: () => "2026",
@@ -51,8 +59,8 @@ const context = vm.createContext({
 });
 let source = fs
   .readFileSync(require("node:path").join(__dirname, "../app.js"), "utf8")
-  .replaceAll(
-    'await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm")',
+  .replace(
+    /await import\(\s*['"]https:\/\/cdn.sheetjs.com\/xlsx-0\.20\.3\/package\/xlsx.mjs['"]\s*\)/g,
     "xlsx",
   );
 vm.runInContext(source, context);
@@ -85,12 +93,12 @@ async function main() {
     "equipmentModes({non:'flash'}).flashHO",
     (v) => assert.equal(v, "yes"),
   );
-  +test(
+  test(
     "initial startup renders",
     "document.getElementById('view').textContent",
     (v) => assert.match(v, /План действий/),
   );
-  for (let i = 0; i < 10; i++)
+  for (let i = 0; i < 11; i++)
     test(
       "section " + i,
       `go(${i});document.getElementById('view').textContent`,
@@ -232,7 +240,7 @@ async function main() {
   const book = xlsx.utils.book_new();
   const a = [];
   a[3] = [null, "Детализация за 11.2026"];
-  a[8] = [null, null, "KPI"];
+  a[8] = [null, null, "KPI", null, null, "ФАКТ", null, "ПЛАН"];
   ["BEER", "Flash", "CSD", "Lipton"].forEach((n, i) => {
     a[9 + i] = [];
     a[9 + i][2] = n;
@@ -241,7 +249,10 @@ async function main() {
   });
   const b = [];
   b[9] = [];
+  b[9][3] = "Код матрицы";
   b[9][4] = "Shop Id";
+  b[9][6] = "Наименование ТТ";
+  b[9][12] = "Дата визита";
   b[9][35] = "Flash Up Energy Ultra бан.0.43л";
   b[10] = [];
   b[10][4] = 123;
@@ -250,6 +261,10 @@ async function main() {
   b[10][35] = 3;
   const f = [];
   f[7] = [];
+  f[7][3] = "Код точки";
+  f[7][4] = "Торговая точка";
+  f[7][17] = "Total Beer";
+  f[7][23] = "Total NonAlco";
   f[7][18] = "Нац. Группа CSD";
   f[7][22] = "Flash Up";
   f[8] = [];

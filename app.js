@@ -1,4 +1,4 @@
-const APP_VERSION = "0.12.0-pilot3";
+const APP_VERSION = "0.12.0-pilot4";
 const productCache = new Map();
 const initial = {
   kpi: ["BEER", "Flash", "CSD", "Lipton"].map((name) => ({
@@ -2299,7 +2299,7 @@ function routeCards() {
           "</div></div>" +
           (visitCurrent()
             ? fitAdvice(r, t, fm, i)
-            : '<button onclick="visitStart(' + i + ')">Начать визит</button>') +
+            : '<div class="rtactions"><button onclick="visitStart(' + i + ')">Начать визит</button><button class="rtsecondary" onclick="routeRemove(' + i + ')">Убрать из маршрута</button></div>') +
           '<details class="rtdetails"><summary>Заметка и действия' +
           (note ? " · есть заметка" : "") +
           '</summary><textarea placeholder="Постоянная заметка: что обещал клиенту" id="rtnote' +

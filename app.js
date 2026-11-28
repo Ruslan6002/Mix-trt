@@ -962,7 +962,7 @@ async function importShortcut(manual = false) {
     const { bytes, pdf, excel } = decodeShortcut(t);
     if (!pdf && !excel) {
       let html = new TextDecoder().decode(bytes);
-      if (/<html/i.test(html)) {
+      if (/<(?:html|table)\b/i.test(html)) {
         await monoLoad(html);
         return;
       }
@@ -4467,12 +4467,12 @@ async function loadMonolitFile(file) {
   }
 }
 function decodeShortcut(value) {
-  let text = String(value || "")
-    .trim()
-    .replace(/^data:[^,]+;base64,/i, "")
-    .replace(/\s/g, "");
+  let text = String(value || "").trim();
   if (!text) throw Error("Буфер пуст");
   if (text.length > 36 * 1024 * 1024) throw Error("Слишком большой отчёт");
+  if (/<(?:html|table)\b/i.test(text) && /Table2/i.test(text))
+    return { bytes: new TextEncoder().encode(text), pdf: false, excel: false };
+  text = text.replace(/^data:[^,]+;base64,/i, "").replace(/\s/g, "");
   let raw = atob(text),
     bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
   return {

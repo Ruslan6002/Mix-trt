@@ -505,6 +505,15 @@ async function main() {
       assert.throws(() => run(`parseClientsCSV('garbage')`), /CSV/);
     },
   );
+  await check("raw Cyrillic Monolit clipboard text preserves UTF-8", () => {
+    const html =
+      '<table id="Table2"><tr><td>Ежедневный отчёт за 24.11</td></tr></table>';
+    h.context.clipboardHTML = html;
+    assert.equal(
+      run("new TextDecoder().decode(decodeShortcut(clipboardHTML).bytes)"),
+      html,
+    );
+  });
   console.log(`${count} stability checks passed`);
 }
 main().catch((e) => {
